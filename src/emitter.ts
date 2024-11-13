@@ -56,6 +56,8 @@ ${imports}${typeDefinitions}
             className = className.slice(0, inner.index);
           }
 
+          if (className === 'Iterable') return; // Use TypeScript's Iterable instead
+
           if (existingNames.includes(className)) {
             renamed.set(qualifiedName, `${packageName.toLowerCase().replaceAll('.', '_')}_${className}`);
             className = `${className} as ${packageName.toLowerCase().replaceAll('.', '_')}_${className}`;
@@ -72,11 +74,17 @@ ${imports}${typeDefinitions}
           // Debugging is fun!
           // Bun.write('./output/' + `${type.package}.${type.name}`.replaceAll('.', '_') + '.json', JSON.stringify(type, null, 2));
           if ('superclass' in type && type.superclass) {
-            addImport(type.superclass);
+            addImport(type.superclass.name);
+            if (type.superclass.superclass) {
+              addImport(type.superclass.superclass.name);
+            }
           }
           if ('interfaces' in type) {
             for (const iface of type.interfaces) {
-              addImport(iface);
+              addImport(iface.name);
+              if (iface.superclass) {
+                addImport(iface.superclass.name);
+              }
             }
           }
           if ('fields' in type && type.fields.length > 0) {
@@ -164,10 +172,10 @@ ${imports}${typeDefinitions}
                     result += `<${type.generics.map(g => `${g.name}${g.superclass ? ` extends ${this.getTypeName(g.superclass.name, renamed)}${g.superclass?.superclass ? ('<' + this.getTypeName(g.superclass.superclass.name, renamed) + '>') : ''}` : ''} = any`).join(', ')}>`;
                 }
                 if (type.superclass) {
-                    result += ` extends ${this.getTypeName(type.superclass, renamed)}`;
+                    result += ` extends ${this.getTypeName(type.superclass.name, renamed)}${type.superclass.superclass ? ('<' + this.getTypeName(type.superclass.superclass.name, renamed) + '>') : ''}`;
                 }
                 if (type.interfaces.length > 0) {
-                    result += ` implements ${type.interfaces.map(i => this.getTypeName(i, renamed)).join(', ')}`;
+                    result += ` implements ${type.interfaces.map(i => `${this.getTypeName(i.name, renamed)}${i.superclass ? ('<' + this.getTypeName(i.superclass.name, renamed) + '>') : ''}`).join(', ')}`;
                 }
                 break;
             case 'interface':
@@ -176,7 +184,7 @@ ${imports}${typeDefinitions}
                     result += `<${type.generics.map(g => `${g.name}${g.superclass ? ` extends ${this.getTypeName(g.superclass.name, renamed)}${g.superclass?.superclass ? ('<' + this.getTypeName(g.superclass.superclass.name, renamed) + '>') : ''}` : ''} = any`).join(', ')}>`;
                 }
                 if (type.interfaces.length > 0) {
-                    result += ` extends ${type.interfaces.map(i => this.getTypeName(i, renamed)).join(', ')}`;
+                    result += ` extends ${type.interfaces.map(i => `${this.getTypeName(i.name, renamed)}${i.superclass ? ('<' + this.getTypeName(i.superclass.name, renamed) + '>') : ''}`).join(', ')}`;
                 }
                 break;
         }

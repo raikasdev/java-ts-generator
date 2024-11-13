@@ -187,7 +187,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
         }}),
         type: 'class',
         interfaces: [],
-        superclass: `java.lang.Enum<${type.name}>`,
+        superclass: { name: 'java.lang.Enum', superclass: { name: type.name } },
       }
     } else if (type instanceof Interface) {
       let interfaceGenerics: GenericDefinition[] = [];
@@ -289,7 +289,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
             static: method.modifiers.includes("static"),
           }}),
         type: 'interface',
-        interfaces: type.interfaces.map(i => i.canonicalName()),
+        interfaces: type.interfaces.map(i => ({ name: i.canonicalName(), superclass: i.arguments[0] ? { name: i.arguments[0].name } : undefined })),
         generics: interfaceGenerics,
       }
     } else if (type instanceof Class) {
@@ -317,6 +317,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
           classGenerics.push(definition);
         }
       }
+      console.log(type.superclass?.toJSON());
       definition = {
         name: type.name,
         package: packageName,
@@ -420,10 +421,8 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
             static: method.modifiers.includes("static"),
           }}),
         type: 'class',
-        interfaces: type.interfaces.map(i => {
-          return i.canonicalName()
-        }),
-        superclass: type.superclass?.canonicalName(),
+        interfaces: type.interfaces.map(i => ({ name: i.canonicalName(), superclass: i.arguments[0] ? { name: i.arguments[0].name } : undefined })),
+        superclass: type.superclass ? { name: type.superclass.canonicalName(), superclass: type.superclass.arguments[0] ? { name: type.superclass.arguments[0].name } : undefined } : undefined,
         generics: classGenerics,
       }
     }

@@ -28,8 +28,8 @@ export interface ParameterDefinition {
 
 export interface ClassDefinition {
     type: 'class';
-    superclass?: string;
-    interfaces: string[];
+    superclass?: GenericDefinition;
+    interfaces: GenericDefinition[];
     constructors: ConstructorDefinition[];
 
     fields: FieldDefinition[];
@@ -42,7 +42,7 @@ export interface ConstructorDefinition {
 
 export interface InterfaceDefinition {
     type: 'interface';
-    interfaces: string[];
+    interfaces: GenericDefinition[];
     generics?: GenericDefinition[];
 }
 
