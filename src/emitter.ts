@@ -328,7 +328,7 @@ ${imports}${typeDefinitions}
     }
 
     private convertGenericType(type: GenericDefinition, renamed: Map<string, string>): string {
-      if (type.name === 'List' && type.superclass) {
+      if ((type.name === 'List' || type.name === 'java.util.List') && type.superclass) {
         return `${this.convertGenericType(type.superclass, renamed)}[]`;
       }
       return `${this.convertType(type.name, renamed)}${type.superclass ? `<${this.getTypeName(type.superclass.name, renamed)}${type.superclass?.superclass ? ('<' + this.getTypeName(type.superclass.superclass.name, renamed) + '>') : ''}>` : ''}`;
@@ -359,7 +359,7 @@ ${imports}${typeDefinitions}
         const inner = javaType.match(/<(.*)>$/);
         if (inner) {
           const baseType = javaType.slice(0, inner.index);
-          if (baseType === 'List') {
+          if (baseType === 'List' || baseType === 'java.util.List') {
             return `${this.convertType(inner[1], renamed)}[]`;
           }
           return `${this.convertType(baseType, renamed)}<${this.convertType(inner[1], renamed)}>`;
