@@ -99,7 +99,13 @@ ${imports}${typeDefinitions}
           }
           if ('methods' in type && type.methods.length > 0) {
             for (const method of type.methods) {
-              addImport(method.returnType);
+              addImport(method.returnType.name);
+              if (method.returnType.superclass) {
+                addImport(method.returnType.superclass.name);
+                if (method.returnType.superclass.superclass) {
+                  addImport(method.returnType.superclass.superclass.name);
+                }
+              }
               for (const param of method.parameters) {
                 addImport(param.type.name);
                 if (param.type.superclass) {
@@ -188,27 +194,26 @@ ${imports}${typeDefinitions}
         }
 
         // If both getX and setX exists, add getter and setter functions and set javadocs of original to @deprecated
-        for (const getter of type.methods.filter((i) => i.name.startsWith("get"))) {
+        // This is CraftJS specific functionality: if you are forking this for something else feel free to remove this section
+        for (const getter of type.methods.filter((i) => i.name.startsWith("get") && (type.type !== 'interface' || !i.static))) {
           let valueName = getter.name.slice(3); // And set first letter to lowercase
-          const setter = type.methods.find((i) => i.name === `set${valueName}` && i.parameters.length === 1);
+          valueName = valueName.charAt(0).toLowerCase() + valueName.slice(1);
+          getter.javadoc = `@deprecated Use ${valueName} instead.`;
+          type.methods.push({
+            name: `get ${valueName}`,
+            parameters: [],
+            returnType: getter.returnType,
+            static: getter.static,
+            generics: getter.generics,
+          });
+          const setter = type.methods.find((i) => i.name === `set${getter.name.slice(3)}` && i.parameters.length === 1);
           if (setter) {
-            valueName = valueName.charAt(0).toLowerCase() + valueName.slice(1);
-            getter.javadoc = `@deprecated Use ${valueName} instead.`;
             setter.javadoc = `@deprecated Use ${valueName} instead.`;
-
-            type.methods.push({
-              name: `get ${valueName}`,
-              parameters: [],
-              returnType: getter.returnType,
-              javadoc: `Returns the ${valueName} value.`,
-              static: getter.static,
-              generics: getter.generics,
-            });
 
             type.methods.push({
               name: `set ${valueName}`,
               parameters: setter.parameters,
-              returnType: 'void',
+              returnType: { name: 'void' },
               static: setter.static,
               generics: setter.generics,
             });
@@ -261,7 +266,7 @@ ${imports}${typeDefinitions}
             if (method.static) {
               result += 'static ';
             }
-            result += `${method.name}${generics}(${params}): ${this.convertType(method.returnType, renamed)};`;
+            result += `${method.name}${generics}(${params}): ${this.convertType(method.returnType.name, renamed)}${method.returnType.superclass ? `<${this.getTypeName(method.returnType.superclass.name, renamed)}${method.returnType.superclass?.superclass ? ('<' + this.getTypeName(method.returnType.superclass.superclass.name, renamed) + '>') : ''}>` : ''};`;
             return result;
         }).join('\n') + '\n';
     }

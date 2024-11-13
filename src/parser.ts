@@ -1,7 +1,7 @@
 import { Class, Enum, Interface, parse, Record, TypeDeclaration } from "../java-model";
 import fs from 'fs/promises';
 import type { GenericDefinition, TypeDefinition } from "./types";
-import { GenericInterfaceMethodDeclarationContext } from "java-ast";
+import { GenericInterfaceMethodDeclarationContext, InterfaceMethodDeclarationContext, MethodDeclarationContext } from "java-ast";
 
 function tryType(type: TypeDeclaration, typeName: string) {
   let array = false;
@@ -139,7 +139,27 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
               type: definition,
             }})
           })),
-        methods: type.methods.filter((i) => i.modifiers.includes("public")).map((method) => ({
+        methods: type.methods.filter((i) => i.modifiers.includes("public")).map((method) => {
+          let fullType = method.type.qualifiedName;
+          if (method.context instanceof MethodDeclarationContext) {
+            fullType = method.context.typeTypeOrVoid().text;
+          } else {
+            fullType = method.context.interfaceCommonBodyDeclaration()!.typeTypeOrVoid().text;
+          }
+          const returnType: GenericDefinition = {
+            name: method.type.qualifiedName,
+          }
+          const inner = fullType?.match(/<(.*)>$/);
+          if (fullType && inner) {
+            const innerInner = inner[1].match(/<(.*)>$/);
+            returnType.superclass = {
+              name: (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', ''),
+              superclass: innerInner ? {
+                name: innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+              } : undefined,
+            }
+          }
+          return {
           name: method.name,
           parameters: method.parameters.map((param) => {
             const paramType = param.context.typeType().text;
@@ -162,9 +182,9 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
               name: replaceIllegalParameters(param.name),
               type: definition,
             }}),
-          returnType: tryType(type, method.type.qualifiedName),
+          returnType,
           static: method.modifiers.includes("static"),
-        })),
+        }}),
         type: 'class',
         interfaces: [],
         superclass: `java.lang.Enum<${type.name}>`,
@@ -222,6 +242,25 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
               generics.push(definition);
             }
           }
+          let fullType = method.type.qualifiedName;
+          if (method.context instanceof MethodDeclarationContext) {
+            fullType = method.context.typeTypeOrVoid().text;
+          } else {
+            fullType = method.context.interfaceCommonBodyDeclaration()!.typeTypeOrVoid().text;
+          }
+          const returnType: GenericDefinition = {
+            name: method.type.qualifiedName,
+          }
+          const inner = fullType?.match(/<(.*)>$/);
+          if (fullType && inner) {
+            const innerInner = inner[1].match(/<(.*)>$/);
+            returnType.superclass = {
+              name: (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', ''),
+              superclass: innerInner ? {
+                name: innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+              } : undefined,
+            }
+          }
           return {
             name: method.name,
             parameters: method.parameters.map((param) => {
@@ -245,7 +284,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
                 name: replaceIllegalParameters(param.name),
                 type: definition,
               }}),
-            returnType: tryType(type, method.type.qualifiedName),
+            returnType,
             generics,
             static: method.modifiers.includes("static"),
           }}),
@@ -333,6 +372,27 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
               generics.push(definition);
             }
           }
+          
+          let fullType = method.type.qualifiedName;
+          if (method.context instanceof MethodDeclarationContext) {
+            fullType = method.context.typeTypeOrVoid().text;
+          } else {
+            fullType = method.context.interfaceCommonBodyDeclaration()!.typeTypeOrVoid().text;
+          }
+          const returnType: GenericDefinition = {
+            name: method.type.qualifiedName,
+          }
+          const inner = fullType?.match(/<(.*)>$/);
+          if (fullType && inner) {
+            const innerInner = inner[1].match(/<(.*)>$/);
+            returnType.superclass = {
+              name: (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', ''),
+              superclass: innerInner ? {
+                name: innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+              } : undefined,
+            }
+          }
+
           return {
             name: method.name,
             parameters: method.parameters.map((param) => {
@@ -351,12 +411,11 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
                 }
               }
               
-
               return {
                 name: replaceIllegalParameters(param.name),
                 type: definition,
               }}),
-            returnType: tryType(type, method.type.qualifiedName),
+            returnType,
             generics,
             static: method.modifiers.includes("static"),
           }}),

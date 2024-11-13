@@ -13,7 +13,7 @@ export interface GenericDefinition {
 
 export interface MethodDefinition {
     name: string;
-    returnType: string;
+    returnType: GenericDefinition;
     parameters: ParameterDefinition[];
     generics?: GenericDefinition[];
     static: boolean;

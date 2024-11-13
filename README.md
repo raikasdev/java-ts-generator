@@ -43,3 +43,4 @@ Please also note that java-ts-generator provides only the types. Implementing a 
 
 - [x] Constructors
 - [ ] Records
+- [ ] Investigate weird edge case on org.bukkit.scoreboard.Criteria where getName() get's all the modifiers

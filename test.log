@@ -1,0 +1,531 @@
+Processing Maven artifact: io.papermc.paper:paper-api:1.21.3-R0.1-SNAPSHOT from https://repo.papermc.io/repository/maven-public
+Fetching maven metadata from: https://repo.papermc.io/repository/maven-public/io/papermc/paper/paper-api/1.21.3-R0.1-SNAPSHOT/maven-metadata.xml
+Resolved SNAPSHOT version: 1.21.3-R0.1-20241111.192452-32
+Extracting JAR to temp/extract_paper-api-1.21.3-R0.1-20241111.192452-32-sources
+Processing Java files...
+{
+  parent: undefined,
+  name: "getName",
+  modifiers: [
+    "public", "static", "final", "public", "static", "final", "public", "static", "final", "public",
+    "static", "final", "public", "static", "final", "public", "static", "final", "public", "static", "final",
+    "public", "static", "final", "public", "static", "final", "public", "static", "final", "public", "static",
+    "final", "public", "static", "final", "public", "static", "final", "public", "static", "final", "public",
+    "static", "final", "public", "static", "final", "public", "static", "final", "public", "static", "final",
+    "public", "static", "final", "public", "static", "final", "public", "static", "final", "public", "static",
+    "final", "public", "static", "final", "public", "static", "final", "public", "static", "final", "public",
+    "static", "final", "public", "static", "final", "public", "static", "final", "public", "static", "final",
+    "public", "static", "final", "public", "static", "final", "public", "static", "final", "public", "static",
+    "final", "public",
+    ... 30 more items
+  ],
+  annotations: [
+    Annotation {
+      parent: [Object ...],
+      context: [Object ...],
+      qualifiedName: "NotNull",
+      values: [],
+      resolved: undefined,
+      canonicalName: [Function],
+      name: [Getter],
+      resolve: [Function: resolve],
+      toJSON: [Function: toJSON],
+      project: [Function: project],
+      compilationUnit: [Function: compilationUnit],
+      container: [Function: container],
+    }
+  ],
+  context: undefined,
+  type: ObjectType {
+    container: Interface {
+      parent: [Object ...],
+      name: "Criteria",
+      annotations: [],
+      modifiers: [ "public" ],
+      parameters: [],
+      interfaces: [],
+      methods: [
+        [Object ...], [Object ...], [Object ...], [Object ...], [Object ...], [Object ...], [Object ...]
+      ],
+      types: [],
+      canonicalName: [Function],
+      isVoid: [Function],
+      isBoolean: [Function],
+      isNumber: [Function],
+      isString: [Function],
+      context: [Object ...],
+      qualifiedName: [Getter],
+      properties: [Function: properties],
+      visitParents: [Function: visitParents],
+      findObject: [Function: findObject],
+      boxed: [Function: boxed],
+      hasAnnotation: [Function: hasAnnotation],
+      project: [Function: project],
+      compilationUnit: [Function: compilationUnit],
+      container: [Function: container],
+      toJSON: [Function: toJSON],
+    },
+    qualifier: undefined,
+    name: "String",
+    arguments: [],
+    resolved: undefined,
+    canonicalName: [Function],
+    isVoid: [Function],
+    isBoolean: [Function],
+    isNumber: [Function],
+    isString: [Function],
+    qualifiedName: [Getter],
+    resolve: [Function: resolve],
+    toJSON: [Function: toJSON],
+  },
+  parameters: [],
+}
+{
+  parent: undefined,
+  name: "isReadOnly",
+  modifiers: [ "public" ],
+  annotations: [],
+  context: undefined,
+  type: PrimitiveType {
+    name: "boolean",
+    canonicalName: [Function],
+    isVoid: [Function],
+    isBoolean: [Function],
+    isNumber: [Function],
+    isString: [Function],
+    qualifiedName: [Getter],
+    box: [Function: box],
+  },
+  parameters: [],
+}
+{
+  parent: undefined,
+  name: "getDefaultRenderType",
+  modifiers: [ "public" ],
+  annotations: [
+    Annotation {
+      parent: [Object ...],
+      context: [Object ...],
+      qualifiedName: "NotNull",
+      values: [],
+      resolved: undefined,
+      canonicalName: [Function],
+      name: [Getter],
+      resolve: [Function: resolve],
+      toJSON: [Function: toJSON],
+      project: [Function: project],
+      compilationUnit: [Function: compilationUnit],
+      container: [Function: container],
+    }
+  ],
+  context: undefined,
+  type: ObjectType {
+    container: Interface {
+      parent: [Object ...],
+      name: "Criteria",
+      annotations: [],
+      modifiers: [ "public" ],
+      parameters: [],
+      interfaces: [],
+      methods: [
+        [Object ...], [Object ...], [Object ...], [Object ...], [Object ...], [Object ...], [Object ...]
+      ],
+      types: [],
+      canonicalName: [Function],
+      isVoid: [Function],
+      isBoolean: [Function],
+      isNumber: [Function],
+      isString: [Function],
+      context: [Object ...],
+      qualifiedName: [Getter],
+      properties: [Function: properties],
+      visitParents: [Function: visitParents],
+      findObject: [Function: findObject],
+      boxed: [Function: boxed],
+      hasAnnotation: [Function: hasAnnotation],
+      project: [Function: project],
+      compilationUnit: [Function: compilationUnit],
+      container: [Function: container],
+      toJSON: [Function: toJSON],
+    },
+    qualifier: undefined,
+    name: "RenderType",
+    arguments: [],
+    resolved: undefined,
+    canonicalName: [Function],
+    isVoid: [Function],
+    isBoolean: [Function],
+    isNumber: [Function],
+    isString: [Function],
+    qualifiedName: [Getter],
+    resolve: [Function: resolve],
+    toJSON: [Function: toJSON],
+  },
+  parameters: [],
+}
+{
+  parent: undefined,
+  name: "statistic",
+  modifiers: [ "public", "static" ],
+  annotations: [
+    Annotation {
+      parent: [Object ...],
+      context: [Object ...],
+      qualifiedName: "NotNull",
+      values: [],
+      resolved: undefined,
+      canonicalName: [Function],
+      name: [Getter],
+      resolve: [Function: resolve],
+      toJSON: [Function: toJSON],
+      project: [Function: project],
+      compilationUnit: [Function: compilationUnit],
+      container: [Function: container],
+    }
+  ],
+  context: undefined,
+  type: ObjectType {
+    container: Interface {
+      parent: [Object ...],
+      name: "Criteria",
+      annotations: [],
+      modifiers: [ "public" ],
+      parameters: [],
+      interfaces: [],
+      methods: [
+        [Object ...], [Object ...], [Object ...], [Object ...], [Object ...], [Object ...], [Object ...]
+      ],
+      types: [],
+      canonicalName: [Function],
+      isVoid: [Function],
+      isBoolean: [Function],
+      isNumber: [Function],
+      isString: [Function],
+      context: [Object ...],
+      qualifiedName: [Getter],
+      properties: [Function: properties],
+      visitParents: [Function: visitParents],
+      findObject: [Function: findObject],
+      boxed: [Function: boxed],
+      hasAnnotation: [Function: hasAnnotation],
+      project: [Function: project],
+      compilationUnit: [Function: compilationUnit],
+      container: [Function: container],
+      toJSON: [Function: toJSON],
+    },
+    qualifier: undefined,
+    name: "Criteria",
+    arguments: [],
+    resolved: undefined,
+    canonicalName: [Function],
+    isVoid: [Function],
+    isBoolean: [Function],
+    isNumber: [Function],
+    isString: [Function],
+    qualifiedName: [Getter],
+    resolve: [Function: resolve],
+    toJSON: [Function: toJSON],
+  },
+  parameters: [
+    Parameter {
+      parent: [Object ...],
+      context: [Object ...],
+      name: "statistic",
+      type: [Object ...],
+      annotations: [
+        [Object ...]
+      ],
+      hasAnnotation: [Function: hasAnnotation],
+      project: [Function: project],
+      compilationUnit: [Function: compilationUnit],
+      container: [Function: container],
+      toJSON: [Function: toJSON],
+    }, Parameter {
+      parent: [Object ...],
+      context: [Object ...],
+      name: "material",
+      type: [Object ...],
+      annotations: [
+        [Object ...]
+      ],
+      hasAnnotation: [Function: hasAnnotation],
+      project: [Function: project],
+      compilationUnit: [Function: compilationUnit],
+      container: [Function: container],
+      toJSON: [Function: toJSON],
+    }
+  ],
+}
+{
+  parent: undefined,
+  name: "statistic",
+  modifiers: [ "public", "static" ],
+  annotations: [
+    Annotation {
+      parent: [Object ...],
+      context: [Object ...],
+      qualifiedName: "NotNull",
+      values: [],
+      resolved: undefined,
+      canonicalName: [Function],
+      name: [Getter],
+      resolve: [Function: resolve],
+      toJSON: [Function: toJSON],
+      project: [Function: project],
+      compilationUnit: [Function: compilationUnit],
+      container: [Function: container],
+    }
+  ],
+  context: undefined,
+  type: ObjectType {
+    container: Interface {
+      parent: [Object ...],
+      name: "Criteria",
+      annotations: [],
+      modifiers: [ "public" ],
+      parameters: [],
+      interfaces: [],
+      methods: [
+        [Object ...], [Object ...], [Object ...], [Object ...], [Object ...], [Object ...], [Object ...]
+      ],
+      types: [],
+      canonicalName: [Function],
+      isVoid: [Function],
+      isBoolean: [Function],
+      isNumber: [Function],
+      isString: [Function],
+      context: [Object ...],
+      qualifiedName: [Getter],
+      properties: [Function: properties],
+      visitParents: [Function: visitParents],
+      findObject: [Function: findObject],
+      boxed: [Function: boxed],
+      hasAnnotation: [Function: hasAnnotation],
+      project: [Function: project],
+      compilationUnit: [Function: compilationUnit],
+      container: [Function: container],
+      toJSON: [Function: toJSON],
+    },
+    qualifier: undefined,
+    name: "Criteria",
+    arguments: [],
+    resolved: undefined,
+    canonicalName: [Function],
+    isVoid: [Function],
+    isBoolean: [Function],
+    isNumber: [Function],
+    isString: [Function],
+    qualifiedName: [Getter],
+    resolve: [Function: resolve],
+    toJSON: [Function: toJSON],
+  },
+  parameters: [
+    Parameter {
+      parent: [Object ...],
+      context: [Object ...],
+      name: "statistic",
+      type: [Object ...],
+      annotations: [
+        [Object ...]
+      ],
+      hasAnnotation: [Function: hasAnnotation],
+      project: [Function: project],
+      compilationUnit: [Function: compilationUnit],
+      container: [Function: container],
+      toJSON: [Function: toJSON],
+    }, Parameter {
+      parent: [Object ...],
+      context: [Object ...],
+      name: "entityType",
+      type: [Object ...],
+      annotations: [
+        [Object ...]
+      ],
+      hasAnnotation: [Function: hasAnnotation],
+      project: [Function: project],
+      compilationUnit: [Function: compilationUnit],
+      container: [Function: container],
+      toJSON: [Function: toJSON],
+    }
+  ],
+}
+{
+  parent: undefined,
+  name: "statistic",
+  modifiers: [ "public", "static" ],
+  annotations: [
+    Annotation {
+      parent: [Object ...],
+      context: [Object ...],
+      qualifiedName: "NotNull",
+      values: [],
+      resolved: undefined,
+      canonicalName: [Function],
+      name: [Getter],
+      resolve: [Function: resolve],
+      toJSON: [Function: toJSON],
+      project: [Function: project],
+      compilationUnit: [Function: compilationUnit],
+      container: [Function: container],
+    }
+  ],
+  context: undefined,
+  type: ObjectType {
+    container: Interface {
+      parent: [Object ...],
+      name: "Criteria",
+      annotations: [],
+      modifiers: [ "public" ],
+      parameters: [],
+      interfaces: [],
+      methods: [
+        [Object ...], [Object ...], [Object ...], [Object ...], [Object ...], [Object ...], [Object ...]
+      ],
+      types: [],
+      canonicalName: [Function],
+      isVoid: [Function],
+      isBoolean: [Function],
+      isNumber: [Function],
+      isString: [Function],
+      context: [Object ...],
+      qualifiedName: [Getter],
+      properties: [Function: properties],
+      visitParents: [Function: visitParents],
+      findObject: [Function: findObject],
+      boxed: [Function: boxed],
+      hasAnnotation: [Function: hasAnnotation],
+      project: [Function: project],
+      compilationUnit: [Function: compilationUnit],
+      container: [Function: container],
+      toJSON: [Function: toJSON],
+    },
+    qualifier: undefined,
+    name: "Criteria",
+    arguments: [],
+    resolved: undefined,
+    canonicalName: [Function],
+    isVoid: [Function],
+    isBoolean: [Function],
+    isNumber: [Function],
+    isString: [Function],
+    qualifiedName: [Getter],
+    resolve: [Function: resolve],
+    toJSON: [Function: toJSON],
+  },
+  parameters: [
+    Parameter {
+      parent: [Object ...],
+      context: [Object ...],
+      name: "statistic",
+      type: [Object ...],
+      annotations: [
+        [Object ...]
+      ],
+      hasAnnotation: [Function: hasAnnotation],
+      project: [Function: project],
+      compilationUnit: [Function: compilationUnit],
+      container: [Function: container],
+      toJSON: [Function: toJSON],
+    }
+  ],
+}
+{
+  parent: undefined,
+  name: "create",
+  modifiers: [ "public", "static" ],
+  annotations: [
+    Annotation {
+      parent: [Object ...],
+      context: [Object ...],
+      qualifiedName: "NotNull",
+      values: [],
+      resolved: undefined,
+      canonicalName: [Function],
+      name: [Getter],
+      resolve: [Function: resolve],
+      toJSON: [Function: toJSON],
+      project: [Function: project],
+      compilationUnit: [Function: compilationUnit],
+      container: [Function: container],
+    }
+  ],
+  context: undefined,
+  type: ObjectType {
+    container: Interface {
+      parent: [Object ...],
+      name: "Criteria",
+      annotations: [],
+      modifiers: [ "public" ],
+      parameters: [],
+      interfaces: [],
+      methods: [
+        [Object ...], [Object ...], [Object ...], [Object ...], [Object ...], [Object ...], [Object ...]
+      ],
+      types: [],
+      canonicalName: [Function],
+      isVoid: [Function],
+      isBoolean: [Function],
+      isNumber: [Function],
+      isString: [Function],
+      context: [Object ...],
+      qualifiedName: [Getter],
+      properties: [Function: properties],
+      visitParents: [Function: visitParents],
+      findObject: [Function: findObject],
+      boxed: [Function: boxed],
+      hasAnnotation: [Function: hasAnnotation],
+      project: [Function: project],
+      compilationUnit: [Function: compilationUnit],
+      container: [Function: container],
+      toJSON: [Function: toJSON],
+    },
+    qualifier: undefined,
+    name: "Criteria",
+    arguments: [],
+    resolved: undefined,
+    canonicalName: [Function],
+    isVoid: [Function],
+    isBoolean: [Function],
+    isNumber: [Function],
+    isString: [Function],
+    qualifiedName: [Getter],
+    resolve: [Function: resolve],
+    toJSON: [Function: toJSON],
+  },
+  parameters: [
+    Parameter {
+      parent: [Object ...],
+      context: [Object ...],
+      name: "name",
+      type: [Object ...],
+      annotations: [
+        [Object ...]
+      ],
+      hasAnnotation: [Function: hasAnnotation],
+      project: [Function: project],
+      compilationUnit: [Function: compilationUnit],
+      container: [Function: container],
+      toJSON: [Function: toJSON],
+    }
+  ],
+}
+Processing Maven artifact: net.kyori:adventure-api:4.17.0 from https://repo.papermc.io/repository/maven-public
+Extracting JAR to temp/extract_adventure-api-4.17.0-sources
+Processing Java files...
+Processing Maven artifact: net.kyori:adventure-key:4.17.0 from https://repo.papermc.io/repository/maven-public
+Extracting JAR to temp/extract_adventure-key-4.17.0-sources
+Processing Java files...
+Processing Maven artifact: net.kyori:adventure-text-serializer-plain:4.17.0 from https://repo.papermc.io/repository/maven-public
+Extracting JAR to temp/extract_adventure-text-serializer-plain-4.17.0-sources
+Processing Java files...
+Processing Maven artifact: net.kyori:adventure-text-serializer-legacy:4.17.0 from https://repo.papermc.io/repository/maven-public
+Extracting JAR to temp/extract_adventure-text-serializer-legacy-4.17.0-sources
+Processing Java files...
+Generating TypeScript definitions...
+Generated ./output/com_destroystokyo.d.ts
+Generated ./output/io_papermc.d.ts
+Generated ./output/co_aikar.d.ts
+Generated ./output/org_bukkit.d.ts
+Generated ./output/org_spigotmc.d.ts
+Generated ./output/net_kyori.d.ts
+Done!
