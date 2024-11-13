@@ -122,14 +122,19 @@ async function main() {
     // Generate TypeScript definitions
     console.log('Generating TypeScript definitions...');
     const emitter = new TypeScriptEmitter(types);
+    const files = [];
+    const OUTPUT_DIR = process.argv.length > 3 ? process.argv[3] : './output';
     for (const [basePackage, moduleTypes] of modules) {
       const output = emitter.emitPackage(basePackage, Array.from(moduleTypes));
-      const OUTPUT_DIR = process.argv.length > 3 ? process.argv[3] : './output';
       const filename = `${OUTPUT_DIR}/${basePackage.replace(/\./g, '_')}.d.ts`;
       if (!(await fs.exists(OUTPUT_DIR))) await fs.mkdir(OUTPUT_DIR, { recursive: true });
       await fs.writeFile(filename, output);
+      files.push(`${basePackage.replace(/\./g, '_')}.d.ts`);
       console.log('Generated', filename);
     }
+
+    // Generate index.d.ts with references
+    await fs.writeFile(`${OUTPUT_DIR}/index.d.ts`, `// Auto generated index file, do not edit!\n\n${files.map((i) => `/// <reference path="${i}" />`).join('\n')}`);
     
     console.log('Done!');
 
