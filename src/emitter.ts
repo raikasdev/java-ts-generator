@@ -7,6 +7,36 @@ export class TypeScriptEmitter {
     }
 
     emitPackage(basePackage: string, packageTypes: TypeDefinition[]): string {
+      // TypeScriptin object inheritance toimii vähän eritavalla -> saman niminen metodi alaoliossa ylikirjoittaa kaikki ylätason metodit
+      for (const type of packageTypes) {
+        if (type.type === 'class' && type.superclass) {
+            const superType = packageTypes.find(t => `${t.package}.${t.name}` === type.superclass!.name);
+            if (superType) {
+              // Käydään metodit läpi parentilta, jos löydetään samanniminen mutta ei yhtäkään samalla parametrimäärällä kuin childissä niin kopsataan
+              for (const method of superType.methods) {
+                const found1 = type.methods.find(m => m.name === method.name);
+                const found2 = type.methods.find(m => m.name === method.name && JSON.stringify(m.parameters.map((i) => i.type)) === JSON.stringify(method.parameters.map((i) => i.type)));
+                if (found1 && !found2) {
+                  type.methods.push(method);
+                }
+              }
+            }
+          }
+          if (type.type === 'interface' && type.interfaces.length > 0) {
+            for (const iface of type.interfaces) {
+              const interfaceType = packageTypes.find(t => `${t.package}.${t.name}` === iface.name);
+              if (interfaceType) {
+                for (const method of interfaceType.methods) {
+                  const found1 = type.methods.find(m => m.name === method.name);
+                  const found2 = type.methods.find(m => m.name === method.name && JSON.stringify(m.parameters.map((i) => i.type)) === JSON.stringify(method.parameters.map((i) => i.type)));
+                  if (found1 && !found2) {
+                    type.methods.push(method);
+                  }
+                }
+              }
+            }
+          }
+        }
         // Ryhmittele tyypit alipakettien mukaan
         const subPackages = new Map<string, TypeDefinition[]>();
         for (const type of packageTypes) {
@@ -203,7 +233,7 @@ ${imports}${typeDefinitions}
 
         // If both getX and setX exists, add getter and setter functions and set javadocs of original to @deprecated
         // This is CraftJS specific functionality: if you are forking this for something else feel free to remove this section
-        for (const getter of type.methods.filter((i) => i.name.startsWith("get") && (type.type !== 'interface' || !i.static))) {
+        for (const getter of type.methods.filter((i) => i.name.startsWith("get") && i.parameters.length === 0 && (type.type !== 'interface' || !i.static))) {
           let valueName = getter.name.slice(3); // And set first letter to lowercase
           valueName = valueName.charAt(0).toLowerCase() + valueName.slice(1);
           getter.javadoc = `@deprecated Use ${valueName} instead.`;
