@@ -1,4 +1,4 @@
-import type { TypeDefinition, MethodDefinition, FieldDefinition, ConstructorDefinition } from './types';
+import type { TypeDefinition, MethodDefinition, FieldDefinition, ConstructorDefinition, GenericDefinition } from './types';
 
 export class TypeScriptEmitter {
     private types: Map<string, TypeDefinition>;
@@ -199,31 +199,31 @@ ${imports}${typeDefinitions}
             case 'class':
                 result += `  class ${type.name}`;
                 if (type.generics && type.generics.length > 0) {
-                    result += `<${type.generics.map(g => `${g.name}${g.superclass ? ` extends ${this.getTypeName(g.superclass.name, renamed)}${g.superclass?.superclass ? ('<' + this.getTypeName(g.superclass.superclass.name, renamed) + '>') : ''}` : ''} = any`).join(', ')}>`;
+                    result += `<${type.generics.map(g => `${g.name}${g.superclass ? ` extends ${this.convertGenericType(g.superclass, renamed)}` : ''} = any`).join(', ')}>`;
                 }
                 if (type.superclass) {
-                    result += ` extends ${this.getTypeName(type.superclass.name, renamed)}${type.superclass.superclass ? ('<' + this.getTypeName(type.superclass.superclass.name, renamed) + '>') : ''}`;
+                    result += ` extends ${this.convertGenericType(type.superclass, renamed)}`;
                 }
                 if (type.interfaces.length > 0) {
-                    result += ` implements ${type.interfaces.map(i => `${this.getTypeName(i.name, renamed)}${i.superclass ? ('<' + this.getTypeName(i.superclass.name, renamed) + '>') : ''}`).join(', ')}`;
+                    result += ` implements ${type.interfaces.map(i => `${this.convertGenericType(i, renamed)}`).join(', ')}`;
                 }
                 break;
             case 'interface':
                 result += `  interface ${type.name}`;
                 if (type.generics && type.generics.length > 0) {
-                    result += `<${type.generics.map(g => `${g.name}${g.superclass ? ` extends ${this.getTypeName(g.superclass.name, renamed)}${g.superclass?.superclass ? ('<' + this.getTypeName(g.superclass.superclass.name, renamed) + '>') : ''}` : ''} = any`).join(', ')}>`;
+                    result += `<${type.generics.map(g => `${g.name}${g.superclass ? ` extends ${this.convertGenericType(g.superclass, renamed)}` : ''} = any`).join(', ')}>`;
                 }
                 if (type.interfaces.length > 0) {
-                    result += ` extends ${type.interfaces.map(i => `${this.getTypeName(i.name, renamed)}${i.superclass ? ('<' + this.getTypeName(i.superclass.name, renamed) + '>') : ''}`).join(', ')}`;
+                    result += ` extends ${type.interfaces.map(i => this.convertGenericType(i, renamed)).join(', ')}`;
                 }
                 result += ' {};\n';
                 result += `  class ${type.name}`;
                 if (type.generics && type.generics.length > 0) {
-                    result += `<${type.generics.map(g => `${g.name}${g.superclass ? ` extends ${this.getTypeName(g.superclass.name, renamed)}${g.superclass?.superclass ? ('<' + this.getTypeName(g.superclass.superclass.name, renamed) + '>') : ''}` : ''} = any`).join(', ')}>`;
+                    result += `<${type.generics.map(g => `${g.name}${g.superclass ? ` extends ${this.convertGenericType(g.superclass, renamed)}` : ''} = any`).join(', ')}>`;
                 }
                 if (type.interfaces.length > 0) {
                   const nInterfaces = type.interfaces.slice(0, 1);
-                  result += ` extends ${nInterfaces.map(i => `${this.getTypeName(i.name, renamed)}${i.superclass ? ('<' + this.getTypeName(i.superclass.name, renamed) + '>') : ''}`).join(', ')}`;
+                  result += ` extends ${nInterfaces.map(i => `${this.convertGenericType(i, renamed)}`).join(', ')}`;
                 }
                 break;
         }
@@ -277,7 +277,7 @@ ${imports}${typeDefinitions}
 
     private emitConstructors(constructors: ConstructorDefinition[], renamed: Map<string, string>): string {
       return constructors.map(constructor => {
-        return `  constructor(${constructor.parameters.map(p => `${p.name}: ${this.convertType(p.type.name, renamed)}${p.type.superclass ? `<${this.getTypeName(p.type.superclass.name, renamed)}${p.type.superclass?.superclass ? ('<' + this.getTypeName(p.type.superclass.superclass.name, renamed) + '>') : ''}>` : ''}`).join(', ')}) {}\n`;
+        return `  constructor(${constructor.parameters.map(p => `${p.name}: ${this.convertGenericType(p.type, renamed)}`).join(', ')}) {}\n`;
       }).join('\n');
     }
 
@@ -306,14 +306,14 @@ ${imports}${typeDefinitions}
                 result += `    /**\n     * ${method.javadoc}\n     */\n`;
             }
             const params = method.parameters.map(p => 
-                `${p.name}: ${this.convertType(p.type.name, renamed)}${p.type.superclass ? `<${this.getTypeName(p.type.superclass.name, renamed)}${p.type.superclass?.superclass ? ('<' + this.getTypeName(p.type.superclass.superclass.name, renamed) + '>') : ''}>` : ''}`
+                `${p.name}: ${this.convertGenericType(p.type, renamed)}`
             ).join(', ');
             const generics = (method.generics && method.generics.length > 0) ? `<${method.generics.map(g => `${g.name}${g.superclass ? ` extends ${this.getTypeName(g.superclass.name, renamed)}${g.superclass?.superclass ? ('<' + this.getTypeName(g.superclass.superclass.name, renamed) + '>') : ''}` : ''}`).join(', ')}>` : '';
             result += `    `;
             if (method.static) {
               result += 'static ';
             }
-            result += `${method.name}${generics}(${params}): ${this.convertType(method.returnType.name, renamed)}${method.returnType.superclass ? `<${this.getTypeName(method.returnType.superclass.name, renamed)}${method.returnType.superclass?.superclass ? ('<' + this.getTypeName(method.returnType.superclass.superclass.name, renamed) + '>') : ''}>` : ''};`;
+            result += `${method.name}${generics}(${params}): ${this.convertGenericType(method.returnType, renamed)};`;
             return result;
         }).join('\n') + '\n';
     }
@@ -325,6 +325,13 @@ ${imports}${typeDefinitions}
 
     private getTypeName(fullName: string, renamed: Map<string, string>): string {
         return (renamed.get(fullName) || (fullName.split('.').pop() || fullName)).replaceAll('?','any');
+    }
+
+    private convertGenericType(type: GenericDefinition, renamed: Map<string, string>): string {
+      if (type.name === 'List' && type.superclass) {
+        return `${this.convertGenericType(type.superclass, renamed)}[]`;
+      }
+      return `${this.convertType(type.name, renamed)}${type.superclass ? `<${this.getTypeName(type.superclass.name, renamed)}${type.superclass?.superclass ? ('<' + this.getTypeName(type.superclass.superclass.name, renamed) + '>') : ''}>` : ''}`;
     }
 
     private convertType(javaType: string, renamed: Map<string, string>): string {
@@ -345,14 +352,17 @@ ${imports}${typeDefinitions}
 
         // Tarkista array-tyypit
         if (javaType.endsWith('[]')) {
-            const baseType = javaType.slice(0, -2);
-            return `${this.convertType(baseType, renamed)}[]`;
+          const baseType = javaType.slice(0, -2);
+          return `${this.convertType(baseType, renamed)}[]`;
         }
 
         const inner = javaType.match(/<(.*)>$/);
         if (inner) {
           const baseType = javaType.slice(0, inner.index);
-          return `${this.convertType(baseType, renamed)}<${inner[1]}>`;
+          if (baseType === 'List') {
+            return `${this.convertType(inner[1], renamed)}[]`;
+          }
+          return `${this.convertType(baseType, renamed)}<${this.convertType(inner[1], renamed)}>`;
         }
 
         return typeMap[javaType] || this.getTypeName(javaType, renamed);
