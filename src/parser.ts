@@ -317,7 +317,6 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
           classGenerics.push(definition);
         }
       }
-      console.log(type.superclass?.toJSON());
       definition = {
         name: type.name,
         package: packageName,
