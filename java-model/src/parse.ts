@@ -315,7 +315,7 @@ function parseFile(source: string): CompilationUnit {
       );
       moveModifiers(method);
       moveAnnotations(method);
-      if (type instanceof Class) {
+      if (type instanceof Class || type instanceof Enum) {
         type.methods.push(method);
       }
       hasParameters = method;
