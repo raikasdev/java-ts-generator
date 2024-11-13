@@ -1,11 +1,10 @@
 {
-  "name": "javadoc-json-generator",
-  "version": "1.0.0",
-  "description": "Generates JSON documentation from Java class files",
-  "main": "dist/index.js",
+  "name": "java-ts-generator",
+  "version": "2.0.0",
+  "description": "Generates TypeScript definitions from Java classes",
+  "main": "src/index.ts",
   "scripts": {
-    "start": "ts-node src/index.ts",
-    "build": "tsc"
+    "generate": "bun src/index.ts"
   },
   "dependencies": {
     "adm-zip": "^0.5.10",

@@ -1,4 +1,4 @@
-import type { TypeDefinition, MethodDefinition, FieldDefinition } from './types';
+import type { TypeDefinition, MethodDefinition, FieldDefinition, ConstructorDefinition } from './types';
 
 export class TypeScriptEmitter {
     private types: Map<string, TypeDefinition>;
@@ -59,7 +59,6 @@ ${imports}${typeDefinitions}
           if (existingNames.includes(className)) {
             renamed.set(qualifiedName, `${packageName.toLowerCase().replaceAll('.', '_')}_${className}`);
             className = `${className} as ${packageName.toLowerCase().replaceAll('.', '_')}_${className}`;
-            console.log('renamed to', className)
           }
 
           existingNames.push(className);
@@ -70,6 +69,8 @@ ${imports}${typeDefinitions}
         }
 
         for (const type of moduleTypes) {
+          // Debugging is fun!
+          // Bun.write('./output/' + `${type.package}.${type.name}`.replaceAll('.', '_') + '.json', JSON.stringify(type, null, 2));
           if ('superclass' in type && type.superclass) {
             addImport(type.superclass);
           }
@@ -81,6 +82,19 @@ ${imports}${typeDefinitions}
           if ('fields' in type && type.fields.length > 0) {
             for (const field of type.fields) {
               addImport(field.type);
+            }
+          }
+          if ('constructors' in type && type.constructors.length > 0) {
+            for (const method of type.constructors) {
+              for (const param of method.parameters) {
+                addImport(param.type.name);
+                if (param.type.superclass) {
+                  addImport(param.type.superclass.name);
+                  if (param.type.superclass.superclass) {
+                    addImport(param.type.superclass.superclass.name);
+                  }
+                }
+              }
             }
           }
           if ('methods' in type && type.methods.length > 0) {
@@ -168,6 +182,11 @@ ${imports}${typeDefinitions}
             result += this.emitFields(type.fields, renamed);
         }
 
+        // Emit constructors
+        if ('constructors' in type && type.constructors.length > 0) {
+          result += this.emitConstructors(type.constructors, renamed);
+        }
+
         // If both getX and setX exists, add getter and setter functions and set javadocs of original to @deprecated
         for (const getter of type.methods.filter((i) => i.name.startsWith("get"))) {
           let valueName = getter.name.slice(3); // And set first letter to lowercase
@@ -204,6 +223,12 @@ ${imports}${typeDefinitions}
         return result;
     }
 
+    private emitConstructors(constructors: ConstructorDefinition[], renamed: Map<string, string>): string {
+      return constructors.map(constructor => {
+        return `  constructor(${constructor.parameters.map(p => `${p.name}: ${this.convertType(p.type.name, renamed)}${p.type.superclass ? `<${this.getTypeName(p.type.superclass.name, renamed)}${p.type.superclass?.superclass ? ('<' + this.getTypeName(p.type.superclass.superclass.name, renamed) + '>') : ''}>` : ''}`).join(', ')}) {}\n`;
+      }).join('\n');
+    }
+
     private emitFields(fields: FieldDefinition[], renamed: Map<string, string>): string {
         return fields.map(field => {
             let result = '';
@@ -227,9 +252,6 @@ ${imports}${typeDefinitions}
             let result = '';
             if (method.javadoc) {
                 result += `    /**\n     * ${method.javadoc}\n     */\n`;
-            }
-            if (method.parameters[0] === undefined) {
-              console.log(method);
             }
             const params = method.parameters.map(p => 
                 `${p.name}: ${this.convertType(p.type.name, renamed)}${p.type.superclass ? `<${this.getTypeName(p.type.superclass.name, renamed)}${p.type.superclass?.superclass ? ('<' + this.getTypeName(p.type.superclass.superclass.name, renamed) + '>') : ''}>` : ''}`

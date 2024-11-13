@@ -2,7 +2,6 @@ import fetch from 'node-fetch';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { XMLParser } from 'fast-xml-parser';
-import { tmpdir } from 'os';
 
 interface MavenMetadata {
     metadata: {
@@ -71,15 +70,17 @@ export async function downloadMavenArtifact(
     
   const url = `${repo}/${groupPath}/${artifact}/${version}/${filename}`;
 
+  // Luo ./temp hakemisto jos sitä ei ole
+  await fs.mkdir('./temp', { recursive: true });
+
   // Lataa tiedosto
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to download: ${response.statusText}`);
   }
 
-  // Tallenna väliaikaiseen tiedostoon
-  const tmpDir = await fs.mkdtemp(path.join(tmpdir(), 'foo-'));
-  const jarPath = path.join(tmpDir, filename);
+  // Tallenna tiedosto ./temp hakemistoon
+  const jarPath = path.join('./temp', filename);
   
   await fs.writeFile(jarPath, await response.buffer());
   return jarPath;

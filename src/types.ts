@@ -30,9 +30,14 @@ export interface ClassDefinition {
     type: 'class';
     superclass?: string;
     interfaces: string[];
+    constructors: ConstructorDefinition[];
 
     fields: FieldDefinition[];
     generics?: GenericDefinition[];
+}
+
+export interface ConstructorDefinition {
+    parameters: ParameterDefinition[];
 }
 
 export interface InterfaceDefinition {

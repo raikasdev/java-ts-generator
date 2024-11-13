@@ -1,4 +1,4 @@
-import { Class, Enum, Interface, parse, TypeDeclaration } from "../java-model";
+import { Class, Enum, Interface, parse, Record, TypeDeclaration } from "../java-model";
 import fs from 'fs/promises';
 import type { GenericDefinition, TypeDefinition } from "./types";
 import { GenericInterfaceMethodDeclarationContext } from "java-ast";
@@ -116,6 +116,29 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
         name: type.name,
         package: packageName,
         fields,
+        constructors: type.constructors.filter((i) => i.modifiers.includes("public")).map((c) => ({
+          parameters: c.parameters.map((param) => {
+            const paramType = param.context.typeType().text;
+            const definition: GenericDefinition = {
+              name: param.type.qualifiedName,
+            }
+            const inner = paramType?.match(/<(.*)>$/);
+            if (paramType && inner) {
+              const innerInner = inner[1].match(/<(.*)>$/);
+              definition.superclass = {
+                name: (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', ''),
+                superclass: innerInner ? {
+                  name: innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                } : undefined,
+              }
+            }
+            
+
+            return {
+              name: replaceIllegalParameters(param.name),
+              type: definition,
+            }})
+          })),
         methods: type.methods.filter((i) => i.modifiers.includes("public")).map((method) => ({
           name: method.name,
           parameters: method.parameters.map((param) => {
@@ -127,9 +150,9 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
             if (paramType && inner) {
               const innerInner = inner[1].match(/<(.*)>$/);
               definition.superclass = {
-                name: inner[1].replace('?super', '').replace('@NotNull', ''),
+                name: (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', ''),
                 superclass: innerInner ? {
-                  name: innerInner[1].replace('?super', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                  name: innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
                 } : undefined,
               }
             }
@@ -163,7 +186,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
             definition.superclass = {
               name: tryType(type, paramType.slice(0, inner.index)),
               superclass: {
-                name: inner[1].replace('?super', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                name: inner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
               }
             }
           }
@@ -171,10 +194,11 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
           interfaceGenerics.push(definition);
         }
       }
+      
       definition = {
         name: type.name,
         package: packageName,
-        methods: type.methods.filter((i) => i.modifiers.includes("public")).map((method) => {
+        methods: type.methods.filter((i) => i.modifiers.length === 0 || i.modifiers.includes("public")).map((method) => {
           let generics: GenericDefinition[] = [];
           if (method.context instanceof GenericInterfaceMethodDeclarationContext) {
             for (const typeParam of method.context.typeParameters().typeParameter()) {
@@ -190,7 +214,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
                 definition.superclass = {
                   name: tryType(type, paramType.slice(0, inner.index)),
                   superclass: {
-                    name: inner[1].replace('?super', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                    name: inner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
                   }
                 }
               }
@@ -209,9 +233,9 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
               if (paramType && inner) {
                 const innerInner = inner[1].match(/<(.*)>$/);
                 definition.superclass = {
-                  name: inner[1].replace('?super', '').replace('@NotNull', ''),
+                  name: (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', ''),
                   superclass: innerInner ? {
-                    name: innerInner[1].replace('?super', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                    name: innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
                   } : undefined,
                 }
               }
@@ -246,7 +270,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
             definition.superclass = {
               name: tryType(type, paramType.slice(0, inner.index)),
               superclass: {
-                name: inner[1].replace('?super', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                name: inner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
               }
             }
           }
@@ -257,6 +281,28 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
       definition = {
         name: type.name,
         package: packageName,
+        constructors: type.constructors.filter((i) => i.modifiers.includes("public")).map((c) => ({
+          parameters: c.parameters.map((param) => {
+            const paramType = param.context.typeType().text;
+            const definition: GenericDefinition = {
+              name: param.type.qualifiedName,
+            }
+            const inner = paramType?.match(/<(.*)>$/);
+            if (paramType && inner) {
+              const innerInner = inner[1].match(/<(.*)>$/);
+              definition.superclass = {
+                name: (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', ''),
+                superclass: innerInner ? {
+                  name: innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                } : undefined,
+              }
+            }
+            
+            return {
+              name: replaceIllegalParameters(param.name),
+              type: definition,
+            }})
+        })),
         fields: type.fields.filter((i) => i.modifiers.includes("public")).map((field) => ({ 
           name: field.name,
           type: tryType(type, field.type.qualifiedName),
@@ -279,7 +325,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
                 definition.superclass = {
                   name: tryType(type, paramType.slice(0, inner.index)),
                   superclass: {
-                    name: inner[1].replace('?super', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                    name: inner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
                   }
                 }
               }
@@ -298,9 +344,9 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
               if (paramType && inner) {
                 const innerInner = inner[1].match(/<(.*)>$/);
                 definition.superclass = {
-                  name: inner[1].replace('?super', '').replace('@NotNull', ''),
+                  name: (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', ''),
                   superclass: innerInner ? {
-                    name: innerInner[1].replace('?super', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                    name: innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
                   } : undefined,
                 }
               }
