@@ -1,4 +1,4 @@
-{
+[{
   "type": "zip",
   "zipPath": "/usr/lib/jvm/openjdk-21/src.zip",
   "include": [
@@ -21,4 +21,4 @@
     "java.util.Random"
   ],
   "offset": "java.base"
-}
+}]
