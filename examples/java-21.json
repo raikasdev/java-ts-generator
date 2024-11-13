@@ -1,0 +1,24 @@
+{
+  "type": "zip",
+  "zipPath": "/usr/lib/jvm/openjdk-21/src.zip",
+  "include": [
+    "java.lang",
+    "java.util",
+    "java.io",
+    "java.nio",
+    "java.time",
+    "javax.imageio",
+    "java.awt"
+  ],
+  "exclude": [
+    "java.lang.Math",
+    "java.util.concurrent",
+    "java.lang.StrictMath",
+    "java.util.jar.Pack200",
+    "java.util.spi",
+    "java.util.stream",
+    "java.util.Spliterators",
+    "java.util.Random"
+  ],
+  "offset": "java.base"
+}

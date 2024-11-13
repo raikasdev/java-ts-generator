@@ -76,6 +76,13 @@ export function resolve(
   } else if (starImports.length === 1) {
     return new TypeReference(`${starImports[0].slice(0, -1)}${name}`);
   } else {
+    if (JAVA_IO_TYPES.includes(name)) {
+      return new TypeReference(`java.io.${name}`);
+    }
+  
+    if (name === 'ZipInputStream') return new TypeReference(`java.util.zip.ZipInputStream`);
+    if (name === 'ZipOutputStream') return new TypeReference(`java.util.zip.ZipOutputStream`);
+
     throw new ResolveError(container, name);
   }
 }
@@ -197,3 +204,8 @@ const JAVA_LANG_TYPES = [
   "SafeVarargs",
   "SuppressWarnings"
 ];
+
+const JAVA_IO_TYPES = [
+  "Closeable",
+  "Serializable"
+]

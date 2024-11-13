@@ -20,7 +20,17 @@ bun run generate [path/to/config.json] [path/to/output/directory]
 
 ### Configuration file
 
-The configuration file is a JSON file that contains an array of objects. Each object has two properties: `repository` and `artifact`. `repository` is the Maven repository URL and `artifact` is the Maven artifact coordinates in the format `groupId:artifactId:version`.
+The configuration file is a JSON file that contains an array of objects:
+
+| Name | Description | Required |
+|------|-------------|----------|
+| type | Either "maven" or "zip" | Yes |
+| repository | Maven repository URL | Only for maven |
+| artifact | Maven artifact coordinates (groupId:artifactId:version) | Only for maven |
+| zipPath | Path to source zip file | Only for zip |
+| include | Array of package names to include (e.g. ["java.lang", "java.util"]) | No |
+| exclude | Array of package names to exclude | No |
+| offset | Directory inside zip to use as root (only for zip) | No |
 
 ## Limitations
 

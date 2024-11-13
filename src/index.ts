@@ -6,69 +6,104 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import extract from 'extract-zip';
 
-// Lisää uusi tyyppi artifaktin määrittelyä varten
-interface MavenArtifact {
-  repository: string;
-  artifact: string;
+// Laajennetaan tyyppiä tukemaan ZIP-tiedostoja
+interface ArtifactSource {
+  type: 'maven' | 'zip';
+  repository?: string;  // Vain Maven-artifakteille
+  artifact?: string;    // Vain Maven-artifakteille
+  zipPath?: string;     // Vain ZIP-tiedostoille
+  include?: string[];
+  exclude?: string[];
+  offset?: string;
 }
 
 const PAPER_REPOSITORY = 'https://repo.papermc.io/repository/maven-public';
 async function main() {
-  // Korvaa yksittäiset muuttujat artifaktien listalla
-  let artifacts: MavenArtifact[] = [
+  // Esimerkki konfiguraatio, joka tukee molempia tyyppejä
+  let artifacts: ArtifactSource[] = [
     {
+      type: 'maven',
       repository: PAPER_REPOSITORY,
       artifact: 'io.papermc.paper:paper-api:1.21.3-R0.1-SNAPSHOT'
     },
     {
+      type: 'maven',
       repository: PAPER_REPOSITORY,
       artifact: 'net.kyori:adventure-api:4.17.0'
     },
     {
+      type: 'maven',
       repository: PAPER_REPOSITORY,
       artifact: 'net.kyori:adventure-key:4.17.0'
     },
     {
+      type: 'maven',
       repository: PAPER_REPOSITORY,
       artifact: 'net.kyori:adventure-text-serializer-plain:4.17.0'
     },
     {
+      type: 'maven',
       repository: PAPER_REPOSITORY,
       artifact: 'net.kyori:adventure-text-serializer-legacy:4.17.0'
     }
-    // Tähän voi lisätä muita artifakteja
   ];
 
   if (process.argv.length > 2) {
     if (!(await Bun.file(process.argv[2]).exists())) {
       console.error(`File ${process.argv[2]} does not exist`);
-      process.exit();
+      process.exit(1);
     }
-
-    artifacts = (await Bun.file(process.argv[2]).json()) as MavenArtifact[];
+    artifacts = (await Bun.file(process.argv[2]).json()) as ArtifactSource[];
   }
 
   const types = new Map<string, TypeDefinition>();
   const modules = new Map<string, Set<TypeDefinition>>();
 
   try {
-    // Käsittele jokainen artifakti
-    for (const {repository, artifact} of artifacts) {
-      console.log(`Processing artifact: ${artifact} from ${repository}`);
+    for (const artifactSource of artifacts) {
+      let extractDir: string;
       
-      // Download Maven artifact
-      console.log('Downloading Maven artifact...');
-      const jarPath = await downloadMavenArtifact(repository, artifact, true);
+      if (artifactSource.type === 'maven') {
+        if (!artifactSource.repository || !artifactSource.artifact) {
+          throw new Error('Maven artifact requires repository and artifact fields');
+        }
+        
+        console.log(`Processing Maven artifact: ${artifactSource.artifact} from ${artifactSource.repository}`);
+        const jarPath = await downloadMavenArtifact(artifactSource.repository, artifactSource.artifact, true);
+        
+        extractDir = path.join('./temp', `extract_${path.basename(jarPath, '.jar')}`);
+        await fs.mkdir(extractDir, { recursive: true });
+        
+        console.log('Extracting JAR to', extractDir);
+        await extract(jarPath, { dir: path.resolve(extractDir) });
+        
+        // Cleanup JAR after extraction
+        await fs.rm(jarPath);
+      } else if (artifactSource.type === 'zip') {
+        if (!artifactSource.zipPath) {
+          throw new Error('ZIP source requires zipPath field');
+        }
+        
+        if (!(await fs.exists(artifactSource.zipPath))) {
+          throw new Error(`ZIP file not found: ${artifactSource.zipPath}`);
+        }
 
-      // Käytä ./temp hakemistoa extraction directoryna
-      const extractDir = path.join('./temp', `extract_${path.basename(jarPath, '.jar')}`);
-      await fs.mkdir(extractDir, { recursive: true });
-      
-      console.log('Extracting JAR to', extractDir);
-      await extract(jarPath, { dir: path.resolve(extractDir) });
+        console.log(`Processing ZIP file: ${artifactSource.zipPath}`);
+        extractDir = path.join('./temp', `extract_${path.basename(artifactSource.zipPath, '.zip')}`);
+        await fs.mkdir(extractDir, { recursive: true });
+        
+        console.log('Extracting ZIP to', extractDir);
+        await extract(artifactSource.zipPath, { dir: path.resolve(extractDir) });
+      } else {
+        throw new Error(`Unknown artifact type: ${(artifactSource as any).type}`);
+      }
+
+      if (artifactSource.offset) {
+        extractDir = path.join(extractDir, artifactSource.offset);
+      }
 
       console.log('Processing Java files...');
-      const files = await processDirectory(extractDir);
+      const files = await processDirectory(extractDir, artifactSource, extractDir);
       const moduleTypes = await processJavaSource(files);
       
       // Lisää tyypit moduuleihin
@@ -80,8 +115,8 @@ async function main() {
         modules.get(basePackage)!.add(type);
       }
 
-      // Cleanup temporary files
-      await fs.rm('./temp', { recursive: true });
+      // Cleanup extracted files
+      await fs.rm(extractDir, { recursive: true });
     }
 
     // Generate TypeScript definitions
@@ -103,7 +138,17 @@ async function main() {
     process.exit(1);
   }
 
-  async function processDirectory(dir: string) {
+  // Lisää apufunktio polun muuntamiseen paketiksi
+  function pathToPackage(filePath: string, extractDir: string): string {
+    const relativePath = path.relative(extractDir, filePath);
+    
+    return relativePath
+      .replace(/\.java$/, '')
+      .split(path.sep)
+      .join('.');
+  }
+
+  async function processDirectory(dir: string, artifactSource: ArtifactSource, originalDir: string) {
     let classes: string[] = [];
     const entries = await fs.readdir(dir, { withFileTypes: true });
     
@@ -111,20 +156,46 @@ async function main() {
       const fullPath = path.join(dir, entry.name);
       
       if (entry.isDirectory()) {
-        classes = classes.concat(await processDirectory(fullPath));
+        classes = classes.concat(await processDirectory(fullPath, artifactSource, originalDir));
       } else if (entry.name.endsWith('.java')) {
-        classes.push(fullPath);
+        const packageName = pathToPackage(fullPath, originalDir);
+        
+        // Tarkista onko paketti sallittujen lilla
+        if (isPackageAllowed(packageName, artifactSource.include, artifactSource.exclude)) {
+          classes.push(fullPath);
+        }
       }
     }
 
     return classes;
   }
-}
 
-function getBasePackage(packageName: string): string {
-  const parts = packageName.split('.');
-  if (parts.length < 2) return packageName;
-  return parts.slice(0, 2).join('.');
+  function getBasePackage(packageName: string): string {
+    const parts = packageName.split('.');
+    if (parts.length < 2) return packageName;
+    return parts.slice(0, 2).join('.');
+  }
+
+  function isPackageAllowed(packageName: string, include?: string[], exclude?: string[]): boolean {
+    if (include) {
+      let allowed = false;
+      for (const includePackage of include) {
+        if (packageName.startsWith(includePackage)) {
+          allowed = true;
+          break;
+        }
+      }
+      if (!allowed) return false;      
+    }
+    if (exclude) {
+      for (const excludePackage of exclude) {
+        if (packageName.startsWith(excludePackage)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
 }
 
 main().catch(console.error);

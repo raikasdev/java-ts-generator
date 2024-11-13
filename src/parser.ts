@@ -361,7 +361,9 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
             static: method.modifiers.includes("static"),
           }}),
         type: 'class',
-        interfaces: type.interfaces.map(i => i.canonicalName()),
+        interfaces: type.interfaces.map(i => {
+          return i.canonicalName()
+        }),
         superclass: type.superclass?.canonicalName(),
         generics: classGenerics,
       }

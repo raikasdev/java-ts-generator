@@ -1,8 +1,10 @@
 [{
+  "type": "maven",
   "repository": "https://maven.enginehub.org/repo",
   "artifact": "com.sk89q.worldedit:worldedit-core:7.2.5"
 },
 {
+  "type": "maven",
   "repository": "https://maven.enginehub.org/repo",
   "artifact": "com.sk89q.worldedit:worldedit-bukkit:7.2.5"
 }]
