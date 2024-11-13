@@ -82,7 +82,14 @@ function replaceIllegalParameters(name: string) {
 }
 
 export async function processJavaSource(files: string[]): Promise<TypeDefinition[]> {
-  const file = await parse({ files, readAsync: async (file) => fs.readFile(file, 'utf-8') });
+  const JETBRAINS_ANNOTATIONS = ['NotNull', 'Nullable', 'Unmodifiable'];
+  const file = await parse({ files, readAsync: async (file) => {
+    let content = await fs.readFile(file, 'utf-8');
+    for (const annotation of JETBRAINS_ANNOTATIONS) {
+      content = content.replaceAll(`.@org.jetbrains.annotations.${annotation} `, '');
+    }
+    return content;
+  }});
   let packageName = '';
   let moduleTypes: TypeDefinition[] = [];
 
