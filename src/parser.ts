@@ -85,8 +85,11 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
   const JETBRAINS_ANNOTATIONS = ['NotNull', 'Nullable', 'Unmodifiable'];
   const file = await parse({ files, readAsync: async (file) => {
     let content = await fs.readFile(file, 'utf-8');
+    // Remove annotations to easen parsing
     for (const annotation of JETBRAINS_ANNOTATIONS) {
       content = content.replaceAll(`.@org.jetbrains.annotations.${annotation} `, '');
+      content = content.replaceAll(`@${annotation} `, '');
+      content = content.replaceAll(`@${annotation}...`, '...');
     }
     return content;
   }});
@@ -229,7 +232,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
       definition = {
         name: type.name,
         package: packageName,
-        methods: type.methods.filter((i) => i.modifiers.length === 0 || i.modifiers.includes("public")).map((method) => {
+        methods: type.methods.filter((i) => !i.modifiers.includes("private") && !i.modifiers.includes("protected")).map((method) => {
           let generics: GenericDefinition[] = [];
           if (method.context instanceof GenericInterfaceMethodDeclarationContext) {
             for (const typeParam of method.context.typeParameters().typeParameter()) {
