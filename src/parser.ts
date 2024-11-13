@@ -139,6 +139,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
                 } : undefined,
               }
             }
+            definition.name = tryType(type, definition.name);
             
 
             return {
@@ -166,6 +167,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
               } : undefined,
             }
           }
+          returnType.name = tryType(type, returnType.name);
           return {
           name: method.name,
           parameters: method.parameters.map((param) => {
@@ -183,6 +185,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
                 } : undefined,
               }
             }
+            definition.name = tryType(type, definition.name);
             
 
             return {
@@ -217,6 +220,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
               }
             }
           }
+          definition.name = tryType(type, definition.name);
 
           interfaceGenerics.push(definition);
         }
@@ -245,6 +249,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
                   }
                 }
               }
+              definition.name = tryType(type, definition.name);
 
               generics.push(definition);
             }
@@ -268,6 +273,8 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
               } : undefined,
             }
           }
+          returnType.name = tryType(type, returnType.name);
+
           return {
             name: method.name,
             parameters: method.parameters.map((param) => {
@@ -285,8 +292,8 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
                   } : undefined,
                 }
               }
+              definition.name = tryType(type, definition.name);
               
-
               return {
                 name: replaceIllegalParameters(param.name),
                 type: definition,
@@ -320,6 +327,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
               }
             }
           }
+          definition.name = tryType(type, definition.name);
 
           classGenerics.push(definition);
         }
@@ -343,6 +351,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
                 } : undefined,
               }
             }
+            definition.name = tryType(type, definition.name);
             
             return {
               name: replaceIllegalParameters(param.name),
@@ -375,6 +384,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
                   }
                 }
               }
+              definition.name = tryType(type, definition.name);
 
               generics.push(definition);
             }
@@ -399,6 +409,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
               } : undefined,
             }
           }
+          returnType.name = tryType(type, returnType.name);
 
           return {
             name: method.name,
@@ -417,6 +428,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
                   } : undefined,
                 }
               }
+              definition.name = tryType(type, definition.name);
               
               return {
                 name: replaceIllegalParameters(param.name),
