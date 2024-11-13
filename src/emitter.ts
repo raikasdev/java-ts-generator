@@ -216,6 +216,15 @@ ${imports}${typeDefinitions}
                 if (type.interfaces.length > 0) {
                     result += ` extends ${type.interfaces.map(i => `${this.getTypeName(i.name, renamed)}${i.superclass ? ('<' + this.getTypeName(i.superclass.name, renamed) + '>') : ''}`).join(', ')}`;
                 }
+                result += ' {};\n';
+                result += `  class ${type.name}`;
+                if (type.generics && type.generics.length > 0) {
+                    result += `<${type.generics.map(g => `${g.name}${g.superclass ? ` extends ${this.getTypeName(g.superclass.name, renamed)}${g.superclass?.superclass ? ('<' + this.getTypeName(g.superclass.superclass.name, renamed) + '>') : ''}` : ''} = any`).join(', ')}>`;
+                }
+                if (type.interfaces.length > 0) {
+                  const nInterfaces = type.interfaces.slice(0, 1);
+                  result += ` extends ${nInterfaces.map(i => `${this.getTypeName(i.name, renamed)}${i.superclass ? ('<' + this.getTypeName(i.superclass.name, renamed) + '>') : ''}`).join(', ')}`;
+                }
                 break;
         }
 
