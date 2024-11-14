@@ -22,7 +22,7 @@ function tryType(type: TypeDeclaration, typeName: string) {
     'String',
     'Object'
   ];
-  if (native.includes(typeName) || typeName.split(".").length > 2) {
+  if (native.includes(typeName) || typeName.split(".").length > 3) {
     return array ? `${typeName}[]` : typeName; // Should already be resolved
   }
 
@@ -164,9 +164,9 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
           if (fullType && inner) {
             const innerInner = inner[1].match(/<(.*)>$/);
             returnType.superclass = {
-              name: (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', ''),
+              name: tryType(type, (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', '')),
               superclass: innerInner ? {
-                name: innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                name: tryType(type, innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
               } : undefined,
             }
           }
@@ -182,9 +182,9 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
             if (paramType && inner) {
               const innerInner = inner[1].match(/<(.*)>$/);
               definition.superclass = {
-                name: (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', ''),
+                name: tryType(type, (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', '')),
                 superclass: innerInner ? {
-                  name: innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                  name: tryType(type, innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
                 } : undefined,
               }
             }
@@ -219,7 +219,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
             definition.superclass = {
               name: tryType(type, paramType.slice(0, inner.index)),
               superclass: {
-                name: inner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                name: tryType(type, inner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
               }
             }
           }
@@ -248,7 +248,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
                 definition.superclass = {
                   name: tryType(type, paramType.slice(0, inner.index)),
                   superclass: {
-                    name: inner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                    name: tryType(type, inner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
                   }
                 }
               }
@@ -270,9 +270,9 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
           if (fullType && inner) {
             const innerInner = inner[1].match(/<(.*)>$/);
             returnType.superclass = {
-              name: (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', ''),
+              name: tryType(type, (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', '')),
               superclass: innerInner ? {
-                name: innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                name: tryType(type, innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
               } : undefined,
             }
           }
@@ -289,9 +289,9 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
               if (paramType && inner) {
                 const innerInner = inner[1].match(/<(.*)>$/);
                 definition.superclass = {
-                  name: (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', ''),
+                  name: tryType(type, (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', '')),
                   superclass: innerInner ? {
-                    name: innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                    name: tryType(type, innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
                   } : undefined,
                 }
               }
@@ -326,7 +326,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
             definition.superclass = {
               name: tryType(type, paramType.slice(0, inner.index)),
               superclass: {
-                name: inner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                name: tryType(type, inner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
               }
             }
           }
@@ -348,9 +348,9 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
             if (paramType && inner) {
               const innerInner = inner[1].match(/<(.*)>$/);
               definition.superclass = {
-                name: (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', ''),
+                name: tryType(type, (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', '')),
                 superclass: innerInner ? {
-                  name: innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                  name: tryType(type, innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
                 } : undefined,
               }
             }
@@ -383,7 +383,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
                 definition.superclass = {
                   name: tryType(type, paramType.slice(0, inner.index)),
                   superclass: {
-                    name: inner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                    name: tryType(type, inner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
                   }
                 }
               }
@@ -406,9 +406,9 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
           if (fullType && inner) {
             const innerInner = inner[1].match(/<(.*)>$/);
             returnType.superclass = {
-              name: (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', ''),
+              name: tryType(type, (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', '')),
               superclass: innerInner ? {
-                name: innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
+                name: tryType(type, innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
               } : undefined,
             }
           }
