@@ -282,7 +282,7 @@ ${imports}${typeDefinitions}
 
     private emitConstructors(constructors: ConstructorDefinition[], renamed: Map<string, string>): string {
       return constructors.map(constructor => {
-        return `  constructor(${constructor.parameters.map(p => `${p.name}: ${this.convertGenericType(p.type, renamed)}`).join(', ')}) {}\n`;
+        return `  constructor(${constructor.parameters.map(p => `${p.name}: ${this.convertGenericType(p.type, renamed)}`).join(', ')});\n`;
       }).join('\n');
     }
 
