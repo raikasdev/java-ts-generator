@@ -124,8 +124,9 @@ async function main() {
     const emitter = new TypeScriptEmitter(types);
     const files = [];
     const OUTPUT_DIR = process.argv.length > 3 ? process.argv[3] : './output';
+    const all = Array.from(modules.values()).map((i) => Array.from<TypeDefinition>(i)).flat();
     for (const [basePackage, moduleTypes] of modules) {
-      const output = emitter.emitPackage(basePackage, Array.from(moduleTypes));
+      const output = emitter.emitPackage(basePackage, Array.from(moduleTypes), all);
       const filename = `${OUTPUT_DIR}/${basePackage.replace(/\./g, '_')}.d.ts`;
       if (!(await fs.exists(OUTPUT_DIR))) await fs.mkdir(OUTPUT_DIR, { recursive: true });
       await fs.writeFile(filename, output);

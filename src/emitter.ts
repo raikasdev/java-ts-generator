@@ -6,34 +6,39 @@ export class TypeScriptEmitter {
         this.types = types;
     }
 
-    emitPackage(basePackage: string, packageTypes: TypeDefinition[]): string {
+    private findInheritedMethods(type: TypeDefinition, packageTypes: TypeDefinition[], existingNames: string[]) {
+      let methods: MethodDefinition[] = [];
+
+      if (type.type === 'class' && type.superclass) {
+        const superType = packageTypes.find(t => `${t.package}.${t.name}` === type.superclass!.name);
+        if (superType && !existingNames.includes(superType.name)) {
+          existingNames.push(superType.name);
+          methods.push(...superType.methods);
+          methods = methods.concat(this.findInheritedMethods(superType, packageTypes, existingNames)); 
+        }
+      }
+
+      type.interfaces.forEach(iface => {
+        const ifaceType = packageTypes.find(t => `${t.package}.${t.name}` === iface.name);
+        if (ifaceType && !existingNames.includes(ifaceType.name)) {
+          existingNames.push(ifaceType.name);
+          methods.push(...ifaceType.methods);
+          methods = methods.concat(this.findInheritedMethods(ifaceType, packageTypes, existingNames));
+        }
+      });
+
+      return methods;
+    }
+
+    emitPackage(basePackage: string, packageTypes: TypeDefinition[], allTypes: TypeDefinition[]): string {
       // TypeScriptin object inheritance toimii vähän eritavalla -> saman niminen metodi alaoliossa ylikirjoittaa kaikki ylätason metodit
       for (const type of packageTypes) {
-        if (type.type === 'class' && type.superclass) {
-            const superType = packageTypes.find(t => `${t.package}.${t.name}` === type.superclass!.name);
-            if (superType) {
-              // Käydään metodit läpi parentilta, jos löydetään samanniminen mutta ei yhtäkään samalla parametrimäärällä kuin childissä niin kopsataan
-              for (const method of superType.methods) {
-                const found1 = type.methods.find(m => m.name === method.name);
-                const found2 = type.methods.find(m => m.name === method.name && JSON.stringify(m.parameters.map((i) => i.type)) === JSON.stringify(method.parameters.map((i) => i.type)));
-                if (found1 && !found2) {
-                  type.methods.push(method);
-                }
-              }
-            }
-          }
-          if (type.type === 'interface' && type.interfaces.length > 0) {
-            for (const iface of type.interfaces) {
-              const interfaceType = packageTypes.find(t => `${t.package}.${t.name}` === iface.name);
-              if (interfaceType) {
-                for (const method of interfaceType.methods) {
-                  const found1 = type.methods.find(m => m.name === method.name);
-                  const found2 = type.methods.find(m => m.name === method.name && JSON.stringify(m.parameters.map((i) => i.type)) === JSON.stringify(method.parameters.map((i) => i.type)));
-                  if (found1 && !found2) {
-                    type.methods.push(method);
-                  }
-                }
-              }
+          // Käydään metodit läpi parentilta, jos löydetään samanniminen mutta ei yhtäkään samalla parametrimäärällä kuin childissä niin kopsataan
+          for (const method of this.findInheritedMethods(type, allTypes, [])) {
+            const found1 = type.methods.find(m => m.name === method.name);
+            const found2 = type.methods.find(m => m.name === method.name && JSON.stringify(m.parameters.map((i) => i.type)) === JSON.stringify(method.parameters.map((i) => i.type)));
+            if (found1 && !found2) {
+              type.methods.push(method);
             }
           }
         }
