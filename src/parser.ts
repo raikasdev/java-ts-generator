@@ -1,7 +1,7 @@
 import { Class, Enum, Interface, parse, Record, TypeDeclaration } from "../java-model";
 import fs from 'fs/promises';
 import type { GenericDefinition, TypeDefinition } from "./types";
-import { GenericInterfaceMethodDeclarationContext, InterfaceMethodDeclarationContext, MethodDeclarationContext } from "java-ast";
+import { GenericInterfaceMethodDeclarationContext, GenericMethodDeclarationContext, MethodDeclarationContext } from "java-ast";
 
 function tryType(type: TypeDeclaration, typeName: string) {
   typeName = typeName.replaceAll('?super', '').replaceAll('?extends', '').replaceAll('@NotNull', '');
@@ -167,6 +167,8 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
           let fullType = method.type.qualifiedName;
           if (method.context instanceof MethodDeclarationContext) {
             fullType = method.context.typeTypeOrVoid().text;
+          } else if (method.context instanceof GenericMethodDeclarationContext) {
+            fullType = method.context.methodDeclaration().typeTypeOrVoid().text;
           } else {
             fullType = method.context.interfaceCommonBodyDeclaration()!.typeTypeOrVoid().text;
           }
@@ -226,6 +228,8 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
           let fullType = method.type.qualifiedName;
           if (method.context instanceof MethodDeclarationContext) {
             fullType = method.context.typeTypeOrVoid().text;
+          } else if (method.context instanceof GenericMethodDeclarationContext) {
+            fullType = method.context.methodDeclaration().typeTypeOrVoid().text;
           } else {
             fullType = method.context.interfaceCommonBodyDeclaration()!.typeTypeOrVoid().text;
           }
@@ -283,7 +287,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
         })),
         methods: type.methods.filter((i) => i.modifiers.includes("public")).map((method) => {
           let generics: GenericDefinition[] = [];
-          if (method.context instanceof GenericInterfaceMethodDeclarationContext) {
+          if (method.context instanceof GenericMethodDeclarationContext) {
             for (const typeParam of method.context.typeParameters().typeParameter()) {
               const extendsArr = [];
               for (const paramType of typeParam.typeBound()?.typeType() ?? []) {
@@ -300,6 +304,8 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
           let fullType = method.type.qualifiedName;
           if (method.context instanceof MethodDeclarationContext) {
             fullType = method.context.typeTypeOrVoid().text;
+          } else if (method.context instanceof GenericMethodDeclarationContext) {
+            fullType = method.context.methodDeclaration().typeTypeOrVoid().text;
           } else {
             fullType = method.context.interfaceCommonBodyDeclaration()!.typeTypeOrVoid().text;
           }

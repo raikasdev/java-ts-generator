@@ -10,6 +10,7 @@ import {
   FieldDeclarationContext,
   FormalParameterContext,
   GenericInterfaceMethodDeclarationContext,
+  GenericMethodDeclarationContext,
   InterfaceDeclarationContext,
   InterfaceMethodDeclarationContext,
   MethodDeclarationContext,
@@ -559,13 +560,13 @@ export class Constructor extends TypeMember implements HasParameters {
 }
 
 export class Method extends TypeMember implements HasParameters {
-  context: MethodDeclarationContext | InterfaceMethodDeclarationContext | GenericInterfaceMethodDeclarationContext;
+  context: MethodDeclarationContext | InterfaceMethodDeclarationContext | GenericMethodDeclarationContext | GenericInterfaceMethodDeclarationContext;
   type: Type;
   parameters: Parameter[];
 
   constructor(
     parent: TypeDeclaration,
-    context: MethodDeclarationContext | InterfaceMethodDeclarationContext | GenericInterfaceMethodDeclarationContext,
+    context: MethodDeclarationContext | InterfaceMethodDeclarationContext | GenericMethodDeclarationContext | GenericInterfaceMethodDeclarationContext,
     name: string,
     type: Type
   ) {

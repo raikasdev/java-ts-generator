@@ -321,6 +321,23 @@ function parseFile(source: string): CompilationUnit {
       hasParameters = method;
       visitor.visitChildren(ctx);
     },
+    visitGenericMethodDeclaration(ctx) {
+      const methodName = ctx.methodDeclaration().identifier().text;
+      const returnType = ctx.methodDeclaration().typeTypeOrVoid();
+      const method = new Method(
+        type!,
+        ctx,
+        methodName,
+        parseType(type!, returnType)
+      );
+      moveModifiers(method);
+      moveAnnotations(method);
+      if (type instanceof Class || type instanceof Enum) {
+        type.methods.push(method);
+      }
+      hasParameters = method;
+      visitor.visitChildren(ctx);
+    },
     visitInterfaceMethodDeclaration(ctx) {
       const methodName = ctx.interfaceCommonBodyDeclaration().identifier().text;
       const returnType = ctx.interfaceCommonBodyDeclaration().typeTypeOrVoid()!;

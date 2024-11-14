@@ -118,7 +118,9 @@ ${imports}${typeDefinitions}
 
         for (const type of moduleTypes) {
           // Debugging is fun!
-          // Bun.write('./output/' + `${type.package}.${type.name}`.replaceAll('.', '_') + '.json', JSON.stringify(type, null, 2));
+          if (Bun.env.JAVA_TS_DEBUG === "1") {
+            Bun.write('./output/' + `${type.package}.${type.name}`.replaceAll('.', '_') + '.json', JSON.stringify(type, null, 2));
+          }
           if ('superclass' in type && type.superclass) {
             superClassIterate([type.superclass]);
           }
@@ -328,8 +330,8 @@ ${imports}${typeDefinitions}
 
     private convertGenericType(type: GenericDefinition, renamed: Map<string, string>, defaultValue: string | null = null): string {
       let val = `${this.convertType(type.name, renamed)}${type.generics ? 
-        `<${type.generics.map(t => this.getTypeName(t.name, renamed) + 
-        (t.generics ? ('<' + t.generics.map(s => this.getTypeName(s.name, renamed)).join(', ') + '>') : '')).join(', ')}>` : ''}`;
+        `<${type.generics.map(t => this.convertType(t.name, renamed) + 
+        (t.generics ? ('<' + t.generics.map(s => this.convertType(s.name, renamed)).join(', ') + '>') : '')).join(', ')}>` : ''}`;
       if ((type.name === 'List' || type.name === 'java.util.List') && type.generics) {
         val= `${this.convertGenericType(type.generics[0], renamed)}[]`;
       }
