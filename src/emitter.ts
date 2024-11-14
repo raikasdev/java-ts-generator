@@ -75,11 +75,12 @@ ${imports}${typeDefinitions}
         const renamed = new Map<string, string>();
         const existingNames: Map<string, string> = new Map();
         function addImport(qualifiedName: string) {
+          if (qualifiedName === '?') return; // any
+
           const parts = qualifiedName.split('.');
           let className = parts.pop();
           const packageName = parts.join('.');
           if (packageName === '') return; // native types
-          if (packageName === '?') return; // any
           if (packageName === currentPackage) return; // same package
           if (!className) return;
 
