@@ -324,7 +324,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
             static: method.modifiers.includes("static"),
           }}),
         type: 'class',
-        interfaces: type.interfaces.map(i => ({ name: i.canonicalName(), superclass: i.arguments.length === 0 ? undefined : i.arguments.map((i) => parseGeneric(type, i.name)) })),
+        interfaces: type.interfaces.map(i => ({ name: i.canonicalName(), generics: i.arguments.length === 0 ? undefined : i.arguments.map((i) => parseGeneric(type, i.name)) })),
         superclass: type.superclass ? { name: type.superclass.canonicalName(), generics: type.superclass.arguments.length === 0 ? undefined : type.superclass.arguments.map((i) => parseGeneric(type, i.name)) } : undefined,
         generics: classGenerics,
       }

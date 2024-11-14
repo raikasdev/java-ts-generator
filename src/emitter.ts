@@ -201,11 +201,11 @@ ${imports}${typeDefinitions}
                 if (type.generics && type.generics.length > 0) {
                   result += `<${type.generics.map((g) => this.convertGenericType(g, renamed, 'any')).join(", ")}>`;
                 }
-                if (type.superclass) {
-                    result += ` extends ${this.convertGenericType(type.superclass, renamed)}`;
-                }
-                if (type.interfaces.length > 0) {
-                    result += ` implements ${type.interfaces.map(i => `${this.convertGenericType(i, renamed)}`).join(', ')}`;
+                if (type.superclass || type.interfaces) {
+                  const extendsList = [type.superclass, ...type.interfaces].filter(i => !!i).map(i => this.convertGenericType(i, renamed));
+                  if (extendsList.length > 0) {
+                    result += ` extends ${extendsList.join(", ")}`; // TypeScript implements is ass
+                  }
                 }
                 break;
             case 'interface':
