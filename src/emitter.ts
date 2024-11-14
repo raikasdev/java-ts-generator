@@ -214,7 +214,7 @@ ${imports}${typeDefinitions}
                 if (type.interfaces.length > 0) {
                     result += ` extends ${type.interfaces.map(i => this.convertGenericType(i, renamed)).join(', ')}`;
                 }
-                result += ' {};\n';
+                result += ' {}\n';
                 result += `  class ${type.name}`;
                 if (type.generics && type.generics.length > 0) {
                     result += `<${type.generics.map((g) => this.convertGenericType(g, renamed, 'any')).join(", ")}>`;
