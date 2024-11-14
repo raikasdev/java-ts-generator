@@ -93,7 +93,7 @@ ${imports}${typeDefinitions}
             className = className.slice(0, inner.index);
           }
 
-          if (className === 'Iterable') return; // Use TypeScript's Iterable instead
+          if (className === 'Iterable' || className === 'java.util.Iterable') return; // Use TypeScript's Iterable instead
 
           if (existingNames.has(className) && existingNames.get(className) !== packageName) {
             renamed.set(qualifiedName, `${packageName.toLowerCase().replaceAll('.', '_')}_${className}`);
