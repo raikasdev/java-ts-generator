@@ -8,7 +8,8 @@ export interface FieldDefinition {
 
 export interface GenericDefinition {
     name: string;
-    superclass?: GenericDefinition;
+    generics?: GenericDefinition[];
+    extends?: GenericDefinition[];
 }
 
 export interface MethodDefinition {

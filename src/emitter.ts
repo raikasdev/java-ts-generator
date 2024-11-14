@@ -73,7 +73,7 @@ ${imports}${typeDefinitions}
     private generateImports(moduleTypes: TypeDefinition[], currentPackage: string): { imports: string, renamed: Map<string, string> } {
         const imports = new Map<string, Set<string>>();
         const renamed = new Map<string, string>();
-        const existingNames: string[] = [];
+        const existingNames: Map<string, string> = new Map();
         function addImport(qualifiedName: string) {
           const parts = qualifiedName.split('.');
           let className = parts.pop();
@@ -86,39 +86,45 @@ ${imports}${typeDefinitions}
             className = className.slice(0, -2);
           }
 
-          const inner = className.match(/<(.*)>$/);
+          const inner = className.match(/<(.*)>/);
           if (inner) {
             className = className.slice(0, inner.index);
           }
 
           if (className === 'Iterable') return; // Use TypeScript's Iterable instead
 
-          if (existingNames.includes(className)) {
+          if (existingNames.has(className) && existingNames.get(className) !== packageName) {
             renamed.set(qualifiedName, `${packageName.toLowerCase().replaceAll('.', '_')}_${className}`);
             className = `${className} as ${packageName.toLowerCase().replaceAll('.', '_')}_${className}`;
           }
 
-          existingNames.push(className);
+          existingNames.set(className, packageName);
 
           const arr = imports.get(packageName) || new Set();
           arr.add(className);
           imports.set(packageName, arr);
         }
 
+        function superClassIterate(superclass: GenericDefinition[]) {
+          for (const s of superclass) {
+            addImport(s.name);
+            if (s.generics) {
+              superClassIterate(s.generics);
+            }
+          }
+        }
+
         for (const type of moduleTypes) {
           // Debugging is fun!
           // Bun.write('./output/' + `${type.package}.${type.name}`.replaceAll('.', '_') + '.json', JSON.stringify(type, null, 2));
           if ('superclass' in type && type.superclass) {
-            addImport(type.superclass.name);
-            if (type.superclass.superclass) {
-              addImport(type.superclass.superclass.name);
-            }
+            superClassIterate([type.superclass]);
           }
           if ('interfaces' in type) {
             for (const iface of type.interfaces) {
               addImport(iface.name);
-              if (iface.superclass) {
-                addImport(iface.superclass.name);
+              if (iface.generics) {
+                superClassIterate(iface.generics);
               }
             }
           }
@@ -131,11 +137,8 @@ ${imports}${typeDefinitions}
             for (const method of type.constructors) {
               for (const param of method.parameters) {
                 addImport(param.type.name);
-                if (param.type.superclass) {
-                  addImport(param.type.superclass.name);
-                  if (param.type.superclass.superclass) {
-                    addImport(param.type.superclass.superclass.name);
-                  }
+                if (param.type.generics) {
+                  superClassIterate(param.type.generics);
                 }
               }
             }
@@ -143,29 +146,20 @@ ${imports}${typeDefinitions}
           if ('methods' in type && type.methods.length > 0) {
             for (const method of type.methods) {
               addImport(method.returnType.name);
-              if (method.returnType.superclass) {
-                addImport(method.returnType.superclass.name);
-                if (method.returnType.superclass.superclass) {
-                  addImport(method.returnType.superclass.superclass.name);
-                }
+              if (method.returnType.generics) {
+                superClassIterate(method.returnType.generics);
               }
               for (const param of method.parameters) {
                 addImport(param.type.name);
-                if (param.type.superclass) {
-                  addImport(param.type.superclass.name);
-                  if (param.type.superclass.superclass) {
-                    addImport(param.type.superclass.superclass.name);
-                  }
+                if (param.type.generics) {
+                  superClassIterate(param.type.generics);
                 }
               }
 
               if ('generics' in method && method.generics && method.generics.length > 0) {
                 for (const generic of method.generics) {
-                  if (generic.superclass) {
-                    addImport(generic.superclass.name);
-                    if (generic.superclass.superclass) {
-                      addImport(generic.superclass.superclass.name);
-                    }
+                  if (generic.generics) {
+                    superClassIterate(generic.generics);
                   }
                 }
               }
@@ -173,11 +167,8 @@ ${imports}${typeDefinitions}
           }
           if ('generics' in type && type.generics && type.generics.length > 0) {
             for (const generic of type.generics) {
-              if (generic.superclass) {
-                addImport(generic.superclass.name);
-                if (generic.superclass.superclass) {
-                  addImport(generic.superclass.superclass.name);
-                }
+              if (generic.generics) {
+                superClassIterate(generic.generics);
               }
             }
           }
@@ -204,7 +195,7 @@ ${imports}${typeDefinitions}
             case 'class':
                 result += `  class ${type.name}`;
                 if (type.generics && type.generics.length > 0) {
-                    result += `<${type.generics.map(g => `${g.name}${g.superclass ? ` extends ${this.convertGenericType(g.superclass, renamed)}` : ''} = any`).join(', ')}>`;
+                  result += `<${type.generics.map((g) => this.convertGenericType(g, renamed, 'any')).join(", ")}>`;
                 }
                 if (type.superclass) {
                     result += ` extends ${this.convertGenericType(type.superclass, renamed)}`;
@@ -216,7 +207,7 @@ ${imports}${typeDefinitions}
             case 'interface':
                 result += `  interface ${type.name}`;
                 if (type.generics && type.generics.length > 0) {
-                    result += `<${type.generics.map(g => `${g.name}${g.superclass ? ` extends ${this.convertGenericType(g.superclass, renamed)}` : ''} = any`).join(', ')}>`;
+                    result += `<${type.generics.map((g) => this.convertGenericType(g, renamed, 'any')).join(", ")}>`;
                 }
                 if (type.interfaces.length > 0) {
                     result += ` extends ${type.interfaces.map(i => this.convertGenericType(i, renamed)).join(', ')}`;
@@ -224,7 +215,7 @@ ${imports}${typeDefinitions}
                 result += ' {};\n';
                 result += `  class ${type.name}`;
                 if (type.generics && type.generics.length > 0) {
-                    result += `<${type.generics.map(g => `${g.name}${g.superclass ? ` extends ${this.convertGenericType(g.superclass, renamed)}` : ''} = any`).join(', ')}>`;
+                    result += `<${type.generics.map((g) => this.convertGenericType(g, renamed, 'any')).join(", ")}>`;
                 }
                 if (type.interfaces.length > 0) {
                   const nInterfaces = type.interfaces.slice(0, 1);
@@ -313,7 +304,8 @@ ${imports}${typeDefinitions}
             const params = method.parameters.map(p => 
                 `${p.name}: ${this.convertGenericType(p.type, renamed)}`
             ).join(', ');
-            const generics = (method.generics && method.generics.length > 0) ? `<${method.generics.map(g => `${g.name}${g.superclass ? ` extends ${this.getTypeName(g.superclass.name, renamed)}${g.superclass?.superclass ? ('<' + this.getTypeName(g.superclass.superclass.name, renamed) + '>') : ''}` : ''}`).join(', ')}>` : '';
+            const generics = (method.generics && method.generics.length > 0) ? 
+              `<${method.generics.map(g => this.convertGenericType(g, renamed)).join(', ')}>` : '';
             result += `    `;
             if (method.static) {
               result += 'static ';
@@ -332,11 +324,20 @@ ${imports}${typeDefinitions}
         return (renamed.get(fullName) || (fullName.split('.').pop() || fullName)).replaceAll('?','any');
     }
 
-    private convertGenericType(type: GenericDefinition, renamed: Map<string, string>): string {
-      if ((type.name === 'List' || type.name === 'java.util.List') && type.superclass) {
-        return `${this.convertGenericType(type.superclass, renamed)}[]`;
+    private convertGenericType(type: GenericDefinition, renamed: Map<string, string>, defaultValue: string | null = null): string {
+      let val = `${this.convertType(type.name, renamed)}${type.generics ? 
+        `<${type.generics.map(t => this.getTypeName(t.name, renamed) + 
+        (t.generics ? ('<' + t.generics.map(s => this.getTypeName(s.name, renamed)).join(', ') + '>') : '')).join(', ')}>` : ''}`;
+      if ((type.name === 'List' || type.name === 'java.util.List') && type.generics) {
+        val= `${this.convertGenericType(type.generics[0], renamed)}[]`;
       }
-      return `${this.convertType(type.name, renamed)}${type.superclass ? `<${this.getTypeName(type.superclass.name, renamed)}${type.superclass?.superclass ? ('<' + this.getTypeName(type.superclass.superclass.name, renamed) + '>') : ''}>` : ''}`;
+      if (type.extends && type.extends.length > 0) {
+        val += ` extends ${type.extends.map(t => this.convertGenericType(t, renamed)).join(', ')}`;
+      }
+      if (defaultValue) {
+        val += ` = ${defaultValue}`;
+      }
+      return val;
     }
 
     private convertType(javaType: string, renamed: Map<string, string>): string {
@@ -352,7 +353,8 @@ ${imports}${typeDefinitions}
           'double': 'number',
           'char': 'string',
           'String': 'string',
-          'Object': 'any'
+          'Object': 'any',
+          '?': 'any'
         };
 
         // Tarkista array-tyypit
@@ -361,7 +363,7 @@ ${imports}${typeDefinitions}
           return `${this.convertType(baseType, renamed)}[]`;
         }
 
-        const inner = javaType.match(/<(.*)>$/);
+        const inner = javaType.match(/<(.*)>/);
         if (inner) {
           const baseType = javaType.slice(0, inner.index);
           if (baseType === 'List' || baseType === 'java.util.List') {

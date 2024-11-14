@@ -4,6 +4,8 @@ import type { GenericDefinition, TypeDefinition } from "./types";
 import { GenericInterfaceMethodDeclarationContext, InterfaceMethodDeclarationContext, MethodDeclarationContext } from "java-ast";
 
 function tryType(type: TypeDeclaration, typeName: string) {
+  typeName = typeName.replaceAll('?super', '').replaceAll('?extends', '').replaceAll('@NotNull', '');
+  
   let array = false;
   if (typeName.endsWith("[]")) {
     array = true;
@@ -20,7 +22,8 @@ function tryType(type: TypeDeclaration, typeName: string) {
     'double',
     'char',
     'String',
-    'Object'
+    'Object',
+    '?',
   ];
   if (native.includes(typeName) || typeName.split(".").length > 3) {
     return array ? `${typeName}[]` : typeName; // Should already be resolved
@@ -81,8 +84,34 @@ function replaceIllegalParameters(name: string) {
   return name;
 }
 
+function parseGeneric(type: TypeDeclaration, name: string) {
+  let fixed = false;
+  const definition: GenericDefinition = {
+    name,
+  }
+  const inner = name.match(/<(.*)>/);
+  if (inner) {
+    definition.name = tryType(type, definition.name.slice(0, inner.index));
+    fixed = true;
+
+    const topLevelGenerics = inner[1].match(/([^,<]+(?:<[^>]+>)?[^,]*)/g);
+    if (!topLevelGenerics) return definition;
+    
+    topLevelGenerics.map((i) => i.trim()).forEach((i) => {
+      if (!definition.generics) definition.generics = [];
+      definition.generics.push(parseGeneric(type, i));
+    });
+  }
+
+  if (!fixed) {
+    definition.name = tryType(type, definition.name);
+  }
+
+  return definition;
+}
+
 export async function processJavaSource(files: string[]): Promise<TypeDefinition[]> {
-  const JETBRAINS_ANNOTATIONS = ['NotNull', 'Nullable', 'Unmodifiable'];
+  const JETBRAINS_ANNOTATIONS = ['NotNull', 'Nullable', 'Unmodifiable', 'UnknownNullability'];
   const file = await parse({ files, readAsync: async (file) => {
     let content = await fs.readFile(file, 'utf-8');
     // Remove annotations to easen parsing
@@ -101,8 +130,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
     packageParts.pop();
     packageName = packageParts.join(".");
 
-    if (!type.modifiers.includes("public")) return;
-
+    if (type.modifiers.includes("private") || type.modifiers.includes("protected")) return;
     let definition: TypeDefinition | null = null;
     if (type instanceof Enum) {
       // Enums are classes of type java.lang.Enum<T> T being self
@@ -129,25 +157,10 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
         constructors: type.constructors.filter((i) => i.modifiers.includes("public")).map((c) => ({
           parameters: c.parameters.map((param) => {
             const paramType = param.context.typeType().text;
-            const definition: GenericDefinition = {
-              name: param.type.qualifiedName,
-            }
-            const inner = paramType?.match(/<(.*)>$/);
-            if (paramType && inner) {
-              const innerInner = inner[1].match(/<(.*)>$/);
-              definition.superclass = {
-                name: (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', ''),
-                superclass: innerInner ? {
-                  name: innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
-                } : undefined,
-              }
-            }
-            definition.name = tryType(type, definition.name);
             
-
             return {
               name: replaceIllegalParameters(param.name),
-              type: definition,
+              type: parseGeneric(type, paramType),
             }})
           })),
         methods: type.methods.filter((i) => i.modifiers.includes("public")).map((method) => {
@@ -157,75 +170,37 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
           } else {
             fullType = method.context.interfaceCommonBodyDeclaration()!.typeTypeOrVoid().text;
           }
-          const returnType: GenericDefinition = {
-            name: method.type.qualifiedName,
-          }
-          const inner = fullType?.match(/<(.*)>$/);
-          if (fullType && inner) {
-            const innerInner = inner[1].match(/<(.*)>$/);
-            returnType.superclass = {
-              name: tryType(type, (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', '')),
-              superclass: innerInner ? {
-                name: tryType(type, innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
-              } : undefined,
-            }
-          }
-          returnType.name = tryType(type, returnType.name);
+
           return {
           name: method.name,
           parameters: method.parameters.map((param) => {
             const paramType = param.context.typeType().text;
-            const definition: GenericDefinition = {
-              name: param.type.qualifiedName,
-            }
-            const inner = paramType?.match(/<(.*)>$/);
-            if (paramType && inner) {
-              const innerInner = inner[1].match(/<(.*)>$/);
-              definition.superclass = {
-                name: tryType(type, (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', '')),
-                superclass: innerInner ? {
-                  name: tryType(type, innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
-                } : undefined,
-              }
-            }
-            definition.name = tryType(type, definition.name);
             
-
             return {
               name: replaceIllegalParameters(param.name),
-              type: definition,
+              type: parseGeneric(type, paramType),
             }}),
-          returnType,
+          returnType: parseGeneric(type, fullType),
           static: method.modifiers.includes("static"),
         }}),
         type: 'class',
         interfaces: [],
-        superclass: { name: 'java.lang.Enum', superclass: { name: type.name } },
+        superclass: { name: 'java.lang.Enum', generics: [{ name: type.name }] },
       }
     } else if (type instanceof Interface) {
       let interfaceGenerics: GenericDefinition[] = [];
       const typeParams = type.context.typeParameters();
       if (typeParams) {
         for (const typeParam of typeParams.typeParameter()) {
-          const paramType = typeParam.typeBound()?.typeType()[0].text;
-          const definition: GenericDefinition = {
+          const extendsArr = [];
+          for (const paramType of typeParam.typeBound()?.typeType() ?? []) {
+            if (!paramType) continue;
+            extendsArr.push(parseGeneric(type, paramType.text));
+          }
+          interfaceGenerics.push({
             name: typeParam.identifier().text,
-            superclass: paramType ? {
-              name: tryType(type, paramType),
-            } : undefined
-          }
-          const inner = paramType?.match(/<(.*)>$/);
-          if (paramType && inner) {
-            definition.superclass = {
-              name: tryType(type, paramType.slice(0, inner.index)),
-              superclass: {
-                name: tryType(type, inner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
-              }
-            }
-          }
-          definition.name = tryType(type, definition.name);
-
-          interfaceGenerics.push(definition);
+            extends: extendsArr,
+          });
         }
       }
       
@@ -234,27 +209,18 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
         package: packageName,
         methods: type.methods.filter((i) => !i.modifiers.includes("private") && !i.modifiers.includes("protected")).map((method) => {
           let generics: GenericDefinition[] = [];
-          if (method.context instanceof GenericInterfaceMethodDeclarationContext) {
-            for (const typeParam of method.context.typeParameters().typeParameter()) {
-              const paramType = typeParam.typeBound()?.typeType()[0].text;
-              const definition: GenericDefinition = {
-                name: typeParam.identifier().text,
-                superclass: paramType ? {
-                  name: tryType(type, paramType),
-                } : undefined
+          if (method.context instanceof GenericInterfaceMethodDeclarationContext) {    
+            for (const typeParam of method.context.typeParameters().typeParameter()) {       
+              const extendsArr = [];
+              for (const paramType of typeParam.typeBound()?.typeType() ?? []) {
+                if (!paramType) continue;
+                extendsArr.push(parseGeneric(type, paramType.text));
               }
-              const inner = paramType?.match(/<(.*)>$/);
-              if (paramType && inner) {
-                definition.superclass = {
-                  name: tryType(type, paramType.slice(0, inner.index)),
-                  superclass: {
-                    name: tryType(type, inner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
-                  }
-                }
-              }
-              definition.name = tryType(type, definition.name);
 
-              generics.push(definition);
+              generics.push({
+                name: typeParam.identifier().text,
+                extends: extendsArr,
+              });
             }
           }
           let fullType = method.type.qualifiedName;
@@ -263,50 +229,22 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
           } else {
             fullType = method.context.interfaceCommonBodyDeclaration()!.typeTypeOrVoid().text;
           }
-          const returnType: GenericDefinition = {
-            name: method.type.qualifiedName,
-          }
-          const inner = fullType?.match(/<(.*)>$/);
-          if (fullType && inner) {
-            const innerInner = inner[1].match(/<(.*)>$/);
-            returnType.superclass = {
-              name: tryType(type, (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', '')),
-              superclass: innerInner ? {
-                name: tryType(type, innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
-              } : undefined,
-            }
-          }
-          returnType.name = tryType(type, returnType.name);
-
+          
           return {
             name: method.name,
             parameters: method.parameters.map((param) => {
               const paramType = param.context.typeType().text;
-              const definition: GenericDefinition = {
-                name: param.type.qualifiedName,
-              }
-              const inner = paramType?.match(/<(.*)>$/);
-              if (paramType && inner) {
-                const innerInner = inner[1].match(/<(.*)>$/);
-                definition.superclass = {
-                  name: tryType(type, (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', '')),
-                  superclass: innerInner ? {
-                    name: tryType(type, innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
-                  } : undefined,
-                }
-              }
-              definition.name = tryType(type, definition.name);
               
               return {
                 name: replaceIllegalParameters(param.name),
-                type: definition,
+                type: parseGeneric(type, paramType),
               }}),
-            returnType,
+            returnType: parseGeneric(type, fullType),
             generics,
             static: method.modifiers.includes("static"),
           }}),
         type: 'interface',
-        interfaces: type.interfaces.map(i => ({ name: i.canonicalName(), superclass: i.arguments[0] ? { name: i.arguments[0].name } : undefined })),
+        interfaces: type.interfaces.map(i => ({ name: i.canonicalName(), superclass: i.arguments.length === 0 ? undefined : i.arguments.map((i) => parseGeneric(type, i.name)) })),
         generics: interfaceGenerics,
       }
     } else if (type instanceof Class) {
@@ -314,25 +252,15 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
       const typeParams = type.context.typeParameters();
       if (typeParams) {
         for (const typeParam of typeParams.typeParameter()) {
-          const paramType = typeParam.typeBound()?.typeType()[0].text;
-          const definition: GenericDefinition = {
+          const extendsArr = [];
+          for (const paramType of typeParam.typeBound()?.typeType() ?? []) {
+            if (!paramType) continue;
+            extendsArr.push(parseGeneric(type, paramType.text));
+          }
+          classGenerics.push({
             name: typeParam.identifier().text,
-            superclass: paramType ? {
-              name: tryType(type, paramType),
-            } : undefined
-          }
-          const inner = paramType?.match(/<(.*)>$/);
-          if (paramType && inner) {
-            definition.superclass = {
-              name: tryType(type, paramType.slice(0, inner.index)),
-              superclass: {
-                name: tryType(type, inner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
-              }
-            }
-          }
-          definition.name = tryType(type, definition.name);
-
-          classGenerics.push(definition);
+            extends: extendsArr,
+          });
         }
       }
       definition = {
@@ -341,24 +269,10 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
         constructors: type.constructors.filter((i) => i.modifiers.includes("public")).map((c) => ({
           parameters: c.parameters.map((param) => {
             const paramType = param.context.typeType().text;
-            const definition: GenericDefinition = {
-              name: param.type.qualifiedName,
-            }
-            const inner = paramType?.match(/<(.*)>$/);
-            if (paramType && inner) {
-              const innerInner = inner[1].match(/<(.*)>$/);
-              definition.superclass = {
-                name: tryType(type, (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', '')),
-                superclass: innerInner ? {
-                  name: tryType(type, innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
-                } : undefined,
-              }
-            }
-            definition.name = tryType(type, definition.name);
             
             return {
               name: replaceIllegalParameters(param.name),
-              type: definition,
+              type: parseGeneric(type, paramType),
             }})
         })),
         fields: type.fields.filter((i) => i.modifiers.includes("public")).map((field) => ({ 
@@ -371,25 +285,15 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
           let generics: GenericDefinition[] = [];
           if (method.context instanceof GenericInterfaceMethodDeclarationContext) {
             for (const typeParam of method.context.typeParameters().typeParameter()) {
-              const paramType = typeParam.typeBound()?.typeType()[0].text;
-              const definition: GenericDefinition = {
+              const extendsArr = [];
+              for (const paramType of typeParam.typeBound()?.typeType() ?? []) {
+                if (!paramType) continue;
+                extendsArr.push(parseGeneric(type, paramType.text));
+              }
+              generics.push({
                 name: typeParam.identifier().text,
-                superclass: paramType ? {
-                  name: tryType(type, paramType),
-                } : undefined
-              }
-              const inner = paramType?.match(/<(.*)>$/);
-              if (paramType && inner) {
-                definition.superclass = {
-                  name: tryType(type, paramType.slice(0, inner.index)),
-                  superclass: {
-                    name: tryType(type, inner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
-                  }
-                }
-              }
-              definition.name = tryType(type, definition.name);
-
-              generics.push(definition);
+                extends: extendsArr,
+            });
             }
           }
           
@@ -399,51 +303,23 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
           } else {
             fullType = method.context.interfaceCommonBodyDeclaration()!.typeTypeOrVoid().text;
           }
-          const returnType: GenericDefinition = {
-            name: method.type.qualifiedName,
-          }
-          const inner = fullType?.match(/<(.*)>$/);
-          if (fullType && inner) {
-            const innerInner = inner[1].match(/<(.*)>$/);
-            returnType.superclass = {
-              name: tryType(type, (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', '')),
-              superclass: innerInner ? {
-                name: tryType(type, innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', '')), // In typescript "extends X" is not required
-              } : undefined,
-            }
-          }
-          returnType.name = tryType(type, returnType.name);
 
           return {
             name: method.name,
             parameters: method.parameters.map((param) => {
               const paramType = param.context.typeType().text;
-              const definition: GenericDefinition = {
-                name: param.type.qualifiedName,
-              }
-              const inner = paramType?.match(/<(.*)>$/);
-              if (paramType && inner) {
-                const innerInner = inner[1].match(/<(.*)>$/);
-                definition.superclass = {
-                  name: (innerInner ? inner[1].slice(0, innerInner.index) : inner[1]).replace('?super', '').replace('?extends', '').replace('@NotNull', ''),
-                  superclass: innerInner ? {
-                    name: innerInner[1].replace('?super', '').replace('?extends', '').replace('@NotNull', ''), // In typescript "extends X" is not required
-                  } : undefined,
-                }
-              }
-              definition.name = tryType(type, definition.name);
               
               return {
                 name: replaceIllegalParameters(param.name),
-                type: definition,
+                type: parseGeneric(type, paramType),
               }}),
-            returnType,
+            returnType: parseGeneric(type, fullType),
             generics,
             static: method.modifiers.includes("static"),
           }}),
         type: 'class',
-        interfaces: type.interfaces.map(i => ({ name: i.canonicalName(), superclass: i.arguments[0] ? { name: i.arguments[0].name } : undefined })),
-        superclass: type.superclass ? { name: type.superclass.canonicalName(), superclass: type.superclass.arguments[0] ? { name: type.superclass.arguments[0].name } : undefined } : undefined,
+        interfaces: type.interfaces.map(i => ({ name: i.canonicalName(), superclass: i.arguments.length === 0 ? undefined : i.arguments.map((i) => parseGeneric(type, i.name)) })),
+        superclass: type.superclass ? { name: type.superclass.canonicalName(), generics: type.superclass.arguments.length === 0 ? undefined : type.superclass.arguments.map((i) => parseGeneric(type, i.name)) } : undefined,
         generics: classGenerics,
       }
     }

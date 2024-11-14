@@ -542,7 +542,13 @@ function parseExpression(
       } else if (ctx.floatLiteral() != undefined) {
         return new Literal(Number(ctx.text.replace(/[fFdD]$/, "")));
       } else {
-        return new Literal(JSON.parse(ctx.text));
+        try {
+          const val = new Literal(JSON.parse(ctx.text));
+          return val;
+        } catch (e) {
+          // It's a char literal
+          return new Literal(ctx.text.slice(1, -1));
+        }
       }
     } else if (
       ctx instanceof PrimaryContext ||
