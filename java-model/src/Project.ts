@@ -13,6 +13,7 @@ import {
   GenericMethodDeclarationContext,
   InterfaceDeclarationContext,
   InterfaceMethodDeclarationContext,
+  LastFormalParameterContext,
   MethodDeclarationContext,
   RecordComponentContext,
   RecordDeclarationContext,
@@ -438,6 +439,7 @@ export class TypeParameter extends Model {
 
 export class Interface extends TypeDeclaration {
   context: InterfaceDeclarationContext;
+  fields: Field[];
 
   constructor(
     parent: TypeContainer,
@@ -446,6 +448,7 @@ export class Interface extends TypeDeclaration {
   ) {
     super(parent, name);
     this.context = context;
+    this.fields = [];
   }
 }
 
@@ -579,14 +582,14 @@ export class Method extends TypeMember implements HasParameters {
 
 export class Parameter extends Model {
   parent: Method | Constructor;
-  context: FormalParameterContext;
+  context: FormalParameterContext | LastFormalParameterContext;
   name: string;
   type: Type;
   annotations: Annotation[];
 
   constructor(
     parent: Method | Constructor,
-    context: FormalParameterContext,
+    context: FormalParameterContext | LastFormalParameterContext,
     name: string,
     type: Type
   ) {

@@ -1,7 +1,7 @@
 import { Class, Enum, Interface, parse, Record, TypeDeclaration } from "../java-model";
 import fs from 'fs/promises';
 import type { GenericDefinition, TypeDefinition } from "./types";
-import { GenericInterfaceMethodDeclarationContext, GenericMethodDeclarationContext, MethodDeclarationContext } from "java-ast";
+import { GenericInterfaceMethodDeclarationContext, GenericMethodDeclarationContext, LastFormalParameterContext, MethodDeclarationContext } from "java-ast";
 
 function tryType(type: TypeDeclaration, typeName: string) {
   typeName = typeName.replaceAll('?super', '').replaceAll('?extends', '').replaceAll('@NotNull', '');
@@ -130,6 +130,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
     packageParts.pop();
     packageName = packageParts.join(".");
 
+    if (type.name.endsWith('Impl')) return; // Ignore implementations
     if (type.modifiers.includes("private") || type.modifiers.includes("protected")) return;
     let definition: TypeDefinition | null = null;
     if (type instanceof Enum) {
@@ -161,6 +162,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
             return {
               name: replaceIllegalParameters(param.name),
               type: parseGeneric(type, paramType),
+              spread: (param.context instanceof LastFormalParameterContext && !!param.context.ELLIPSIS()),
             }})
           })),
         methods: type.methods.filter((i) => i.modifiers.includes("public")).map((method) => {
@@ -181,6 +183,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
             return {
               name: replaceIllegalParameters(param.name),
               type: parseGeneric(type, paramType),
+              spread: (param.context instanceof LastFormalParameterContext && !!param.context.ELLIPSIS()),
             }}),
           returnType: parseGeneric(type, fullType),
           static: method.modifiers.includes("static"),
@@ -242,13 +245,14 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
               return {
                 name: replaceIllegalParameters(param.name),
                 type: parseGeneric(type, paramType),
+                spread: (param.context instanceof LastFormalParameterContext && !!param.context.ELLIPSIS()),
               }}),
             returnType: parseGeneric(type, fullType),
             generics,
             static: method.modifiers.includes("static"),
           }}),
         type: 'interface',
-        interfaces: type.interfaces.map(i => ({ name: i.canonicalName(), superclass: i.arguments.length === 0 ? undefined : i.arguments.map((i) => parseGeneric(type, i.name)) })),
+        interfaces: type.interfaces.map(i => ({ name: i.canonicalName(), generics: i.arguments.length === 0 ? undefined : i.arguments.map((i) => parseGeneric(type, i.name)) })),
         generics: interfaceGenerics,
       }
     } else if (type instanceof Class) {
@@ -277,6 +281,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
             return {
               name: replaceIllegalParameters(param.name),
               type: parseGeneric(type, paramType),
+              spread: (param.context instanceof LastFormalParameterContext && !!param.context.ELLIPSIS()),
             }})
         })),
         fields: type.fields.filter((i) => i.modifiers.includes("public")).map((field) => ({ 
@@ -318,6 +323,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
               return {
                 name: replaceIllegalParameters(param.name),
                 type: parseGeneric(type, paramType),
+                spread: (param.context instanceof LastFormalParameterContext && !!param.context.ELLIPSIS()),
               }}),
             returnType: parseGeneric(type, fullType),
             generics,

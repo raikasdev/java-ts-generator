@@ -17,7 +17,7 @@ import {
   Visitor
 } from "java-ast";
 import { JavaLexer } from "java-ast/dist/parser/JavaLexer";
-import { IdentifierContext, JavaParser } from "java-ast/dist/parser/JavaParser";
+import { ConstantDeclaratorContext, IdentifierContext, JavaParser, VariableDeclaratorContext, VariableInitializerContext } from "java-ast/dist/parser/JavaParser";
 import {
   ANTLRInputStream,
   CommonTokenStream,
@@ -415,7 +415,25 @@ function parseFile(source: string): CompilationUnit {
         moveAnnotations(parameter);
         hasParameters.parameters.push(parameter);
       }
-    }
+    },
+    visitLastFormalParameter(ctx) {
+      visitor.visitChildren(ctx);
+      
+      if (hasParameters != undefined) {
+        const parameter = new Parameter(
+          hasParameters as Method | Constructor,
+          ctx,
+          ctx.variableDeclaratorId().text,
+          parseType(type!, ctx.typeType())
+        );
+        moveAnnotations(parameter);
+        hasParameters.parameters.push(parameter);
+      }
+    },
+    visitConstantDeclarator(ctx) {
+      modifiers = [];
+      annotations = [];
+    },
   });
 
   const ast = parseAst(source);

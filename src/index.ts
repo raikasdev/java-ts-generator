@@ -121,7 +121,7 @@ async function main() {
 
     // Generate TypeScript definitions
     console.log('Generating TypeScript definitions...');
-    const emitter = new TypeScriptEmitter(types);
+    const emitter = new TypeScriptEmitter();
     const files = [];
     const OUTPUT_DIR = process.argv.length > 3 ? process.argv[3] : './output';
     const all = Array.from(modules.values()).map((i) => Array.from<TypeDefinition>(i)).flat();

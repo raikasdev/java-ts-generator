@@ -24,6 +24,7 @@ export interface MethodDefinition {
 export interface ParameterDefinition {
     name: string;
     type: GenericDefinition;
+    spread: boolean;
     javadoc?: string;
 }
 

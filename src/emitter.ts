@@ -1,9 +1,9 @@
 import type { TypeDefinition, MethodDefinition, FieldDefinition, ConstructorDefinition, GenericDefinition } from './types';
 
 export class TypeScriptEmitter {
-    private types: Map<string, TypeDefinition>;
-    constructor(types: Map<string, TypeDefinition>) {
-        this.types = types;
+    private priority: string[];
+    constructor() {
+      this.priority = ['Iterator', 'Date'];
     }
 
     private findInheritedMethods(type: TypeDefinition, packageTypes: TypeDefinition[], existingNames: string[]) {
@@ -35,8 +35,30 @@ export class TypeScriptEmitter {
       for (const type of packageTypes) {
           // Käydään metodit läpi parentilta, jos löydetään samanniminen mutta ei yhtäkään samalla parametrimäärällä kuin childissä niin kopsataan
           for (const method of this.findInheritedMethods(type, allTypes, [])) {
+            if (method.name.startsWith('get ') || method.name.startsWith('set ')) {
+              continue;
+            }
             const found1 = type.methods.find(m => m.name === method.name);
-            const found2 = type.methods.find(m => m.name === method.name && JSON.stringify(m.parameters.map((i) => i.type)) === JSON.stringify(method.parameters.map((i) => i.type)));
+            const found2 = type.methods.find(m => m.name === method.name && JSON.stringify(m.parameters.map((i) => i.type)) === JSON.stringify(method.parameters.map((i) => i.type)) && JSON.stringify(m.returnType) === JSON.stringify(method.returnType));
+            // If method has a generic value but doesn't provide it themselves (for example T from the class) ignore that
+            function extractGeneric(type: GenericDefinition): string[] {
+              const generics = [];
+              if (type.name.length === 1) {
+                generics.push(type.name);
+              }
+              if (type.generics) {
+                for (const generic of type.generics) {
+                  generics.push(...extractGeneric(generic));
+                }
+              }
+              return generics;
+            }
+            if (extractGeneric(method.returnType).filter((i) => !method.generics?.find((j) => j.name === i)).length > 0) {
+              continue;
+            }
+            if (method.parameters.find((p) => extractGeneric(p.type).filter((i) => !method.generics?.find((j) => j.name === i)).length > 0)) {
+              continue;
+            }
             if (found1 && !found2) {
               type.methods.push(method);
             }
@@ -62,6 +84,7 @@ export class TypeScriptEmitter {
     private emitModule(packageName: string, moduleTypes: TypeDefinition[]): string {
         const { imports, renamed } = this.generateImports(moduleTypes, packageName);
         const typeDefinitions = moduleTypes
+            .sort((a, b) => this.priority.indexOf(b.name) - this.priority.indexOf(a.name))
             .map(type => this.emitType(type, renamed))
             .join('\n\n');
 
@@ -81,7 +104,9 @@ ${imports}${typeDefinitions}
           let className = parts.pop();
           const packageName = parts.join('.');
           if (packageName === '') return; // native types
-          if (packageName === currentPackage) return; // same package
+          if (packageName === currentPackage) {
+            return; // same package
+          }
           if (!className) return;
 
           if (className.endsWith("[]")) {
@@ -92,8 +117,6 @@ ${imports}${typeDefinitions}
           if (inner) {
             className = className.slice(0, inner.index);
           }
-
-          if (className === 'Iterable' || className === 'java.util.Iterable') return; // Use TypeScript's Iterable instead
 
           if (existingNames.has(className) && existingNames.get(className) !== packageName) {
             renamed.set(qualifiedName, `${packageName.toLowerCase().replaceAll('.', '_')}_${className}`);
@@ -112,6 +135,9 @@ ${imports}${typeDefinitions}
             addImport(s.name);
             if (s.generics) {
               superClassIterate(s.generics);
+            }
+            if (s.extends) {
+              superClassIterate(s.extends);
             }
           }
         }
@@ -161,11 +187,7 @@ ${imports}${typeDefinitions}
               }
 
               if ('generics' in method && method.generics && method.generics.length > 0) {
-                for (const generic of method.generics) {
-                  if (generic.generics) {
-                    superClassIterate(generic.generics);
-                  }
-                }
+                superClassIterate(method.generics);
               }
             }
           }
@@ -195,40 +217,35 @@ ${imports}${typeDefinitions}
         }
 
         // Aloita tyyppi määrittely
-        switch (type.type) {
-            case 'class':
-                result += `  class ${type.name}`;
-                if (type.generics && type.generics.length > 0) {
-                  result += `<${type.generics.map((g) => this.convertGenericType(g, renamed, 'any')).join(", ")}>`;
-                }
-                if (type.superclass || type.interfaces) {
-                  const extendsList = [type.superclass, ...type.interfaces].filter(i => !!i).map(i => this.convertGenericType(i, renamed));
-                  if (extendsList.length > 0) {
-                    result += ` extends ${extendsList.join(", ")}`; // TypeScript implements is ass
-                  }
-                }
-                break;
-            case 'interface':
-                result += `  interface ${type.name}`;
-                if (type.generics && type.generics.length > 0) {
-                    result += `<${type.generics.map((g) => this.convertGenericType(g, renamed, 'any')).join(", ")}>`;
-                }
-                if (type.interfaces.length > 0) {
-                    result += ` extends ${type.interfaces.map(i => this.convertGenericType(i, renamed)).join(', ')}`;
-                }
-                result += ' {}\n';
-                result += `  class ${type.name}`;
-                if (type.generics && type.generics.length > 0) {
-                    result += `<${type.generics.map((g) => this.convertGenericType(g, renamed, 'any')).join(", ")}>`;
-                }
-                if (type.interfaces.length > 0) {
-                  const nInterfaces = type.interfaces.slice(0, 1);
-                  result += ` extends ${nInterfaces.map(i => `${this.convertGenericType(i, renamed)}`).join(', ')}`;
-                }
-                break;
+        let extendsList: GenericDefinition[] = [];
+        if (type.interfaces) {
+          extendsList = type.interfaces;
+        }
+        if ('superclass' in type && type.superclass) {
+          extendsList.push(type.superclass);
         }
 
+        if (extendsList.length > 0) {
+          result += `  interface ${type.name}`; // TypeScript implements is ass
+          if (type.generics && type.generics.length > 0) {
+            result += `<${type.generics.map((g) => this.convertGenericType(g, renamed, 'any')).join(", ")}>`;
+          }
+          result += ` extends ${extendsList.map((i) => this.convertGenericType(i, renamed, null, true)).join(", ")} {}\n`;
+        }
+
+        result += `  class ${type.name}`;
+        if (type.generics && type.generics.length > 0) {
+          result += `<${type.generics.map((g) => this.convertGenericType(g, renamed, 'any')).join(", ")}>`;
+        }
+        if (extendsList.length > 0) {
+          const superClass = extendsList[0];
+          result += ` extends ${this.convertGenericType(superClass, renamed, null, true)}`; // TypeScript implements is ass
+        }
         result += ' {\n';
+
+        if (type.package === 'java.lang' && type.name === 'Iterable') {
+          result += `    [Symbol.iterator](): globalThis.Iterator<${(type.generics ?? [])[0]?.name ?? 'T'}>;\n`
+        }
 
         // Lisää kentät ja metodit
         if ('fields' in type && type.fields.length > 0) {
@@ -277,7 +294,7 @@ ${imports}${typeDefinitions}
 
     private emitConstructors(constructors: ConstructorDefinition[], renamed: Map<string, string>): string {
       return constructors.map(constructor => {
-        return `  constructor(${constructor.parameters.map(p => `${p.name}: ${this.convertGenericType(p.type, renamed)}`).join(', ')});\n`;
+        return `    constructor(${constructor.parameters.map(p => `${p.spread ? '...' : ''}${p.name}: ${this.convertGenericType(p.type, renamed)}${p.spread ? '[]' : ''}`).join(', ')});\n`;
       }).join('\n');
     }
 
@@ -306,7 +323,7 @@ ${imports}${typeDefinitions}
                 result += `    /**\n     * ${method.javadoc}\n     */\n`;
             }
             const params = method.parameters.map(p => 
-                `${p.name}: ${this.convertGenericType(p.type, renamed)}`
+                `${p.spread ? '...' : ''}${p.name}: ${this.convertGenericType(p.type, renamed)}${p.spread ? '[]' : ''}`
             ).join(', ');
             const generics = (method.generics && method.generics.length > 0) ? 
               `<${method.generics.map(g => this.convertGenericType(g, renamed)).join(', ')}>` : '';
@@ -314,7 +331,11 @@ ${imports}${typeDefinitions}
             if (method.static) {
               result += 'static ';
             }
-            result += `${method.name}${generics}(${params}): ${this.convertGenericType(method.returnType, renamed)};`;
+            result += `${method.name}${generics}(${params})`;
+            if (!method.name.startsWith('set ')) {
+              result += `: ${this.convertGenericType(method.returnType, renamed)}`;
+            }
+            result += `;`;
             return result;
         }).join('\n') + '\n';
     }
@@ -328,15 +349,13 @@ ${imports}${typeDefinitions}
         return (renamed.get(fullName) || (fullName.split('.').pop() || fullName)).replaceAll('?','any');
     }
 
-    private convertGenericType(type: GenericDefinition, renamed: Map<string, string>, defaultValue: string | null = null): string {
-      let val = `${this.convertType(type.name, renamed)}${type.generics ? 
-        `<${type.generics.map(t => this.convertType(t.name, renamed) + 
-        (t.generics ? ('<' + t.generics.map(s => this.convertType(s.name, renamed)).join(', ') + '>') : '')).join(', ')}>` : ''}`;
-      if ((type.name === 'List' || type.name === 'java.util.List') && type.generics) {
+    private convertGenericType(type: GenericDefinition, renamed: Map<string, string>, defaultValue: string | null = null, keepList = false): string {
+      let val = `${this.convertType(type.name, renamed)}${type.generics ? `<${type.generics.map(t => this.convertGenericType(t, renamed)).join(', ')}>` : ''}`;
+      if ((type.name === 'List' || type.name === 'java.util.List') && type.generics && !keepList) {
         val= `${this.convertGenericType(type.generics[0], renamed)}[]`;
       }
       if (type.extends && type.extends.length > 0) {
-        val += ` extends ${type.extends.map(t => this.convertGenericType(t, renamed)).join(', ')}`;
+        val += ` extends ${type.extends.map(t => this.convertGenericType(t, renamed)).join(' & ')}`;
       }
       if (defaultValue) {
         val += ` = ${defaultValue}`;
