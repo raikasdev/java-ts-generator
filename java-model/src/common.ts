@@ -44,4 +44,5 @@ export type Modifier =
   | "volatile"
   | "synchronized"
   | "native"
-  | "strictfp";
+  | "strictfp"
+  | "sealed";

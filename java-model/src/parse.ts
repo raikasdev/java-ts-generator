@@ -204,6 +204,7 @@ function parseFile(source: string): CompilationUnit {
       addModifier(ctx.PUBLIC(), "public");
       addModifier(ctx.STATIC(), "static");
       addModifier(ctx.STRICTFP(), "strictfp");
+      addModifier(ctx.SEALED(), "sealed");
       visitor.visitChildren(ctx);
     },
     visitClassDeclaration(ctx) {

@@ -252,7 +252,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
             static: method.modifiers.includes("static"),
           }}),
         type: 'interface',
-        interfaces: type.interfaces.map(i => ({ name: i.canonicalName(), generics: i.arguments.length === 0 ? undefined : i.arguments.map((i) => parseGeneric(type, i.name)) })),
+        interfaces: type.modifiers.includes('sealed') ? [] : type.interfaces.map(i => ({ name: i.canonicalName(), generics: i.arguments.length === 0 ? undefined : i.arguments.map((i) => parseGeneric(type, i.name)) })),
         generics: interfaceGenerics,
       }
     } else if (type instanceof Class) {
