@@ -140,6 +140,7 @@ function parseFile(source: string): CompilationUnit {
   let typeParameter: TypeParameter | undefined;
   let annotations: Annotation[] = [];
   let hasParameters: HasParameters | undefined;
+  let generic = false;
 
   function addModifier(node: unknown, modifier: Modifier) {
     if (node != undefined) {
@@ -306,6 +307,10 @@ function parseFile(source: string): CompilationUnit {
       annotations.push(parseAnnotation(ctx, container, dummyParent));
     },
     visitMethodDeclaration(ctx) {
+      if (generic) {
+        visitor.visitChildren(ctx);
+        return;
+      }
       const methodName = ctx.identifier().text;
       const returnType = ctx.typeTypeOrVoid();
       const method = new Method(
@@ -337,9 +342,15 @@ function parseFile(source: string): CompilationUnit {
         type.methods.push(method);
       }
       hasParameters = method;
+      generic = true;
       visitor.visitChildren(ctx);
+      generic = false;
     },
     visitInterfaceMethodDeclaration(ctx) {
+      if (generic) {
+        visitor.visitChildren(ctx);
+        return;
+      }
       const methodName = ctx.interfaceCommonBodyDeclaration().identifier().text;
       const returnType = ctx.interfaceCommonBodyDeclaration().typeTypeOrVoid()!;
       const method = new Method(
@@ -371,7 +382,9 @@ function parseFile(source: string): CompilationUnit {
         type.methods.push(method);
       }
       hasParameters = method;
+      generic = true;
       visitor.visitChildren(ctx);
+      generic = false;
     },
     visitConstructorDeclaration(ctx) {
       const constructor = new Constructor(type!, ctx);

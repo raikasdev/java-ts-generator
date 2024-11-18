@@ -272,7 +272,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
           } else {
             fullType = method.context.interfaceCommonBodyDeclaration()!.typeTypeOrVoid().text;
           }
-          
+
           return {
             name: method.name,
             parameters: method.parameters.map((param) => {
@@ -314,6 +314,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
           });
         }
       }
+
       definition = {
         name: type.name,
         package: packageName,
