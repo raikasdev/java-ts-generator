@@ -88,6 +88,7 @@ function parseGeneric(type: TypeDeclaration, name: string) {
   let fixed = false;
   const definition: GenericDefinition = {
     name,
+    nullable: type.annotations.some((i) => i.qualifiedName === 'Nullable'),
   }
   const inner = name.match(/<(.*)>/);
   if (inner) {
@@ -116,9 +117,10 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
     let content = await fs.readFile(file, 'utf-8');
     // Remove annotations to easen parsing
     for (const annotation of JETBRAINS_ANNOTATIONS) {
-      content = content.replaceAll(`.@org.jetbrains.annotations.${annotation} `, '');
-      content = content.replaceAll(`@${annotation} `, '');
-      content = content.replaceAll(`@${annotation}...`, '...');
+      //content = content.replaceAll(`\\.@org.jetbrains.annotations.${annotation} `, '');
+      content = content.replaceAll(`org.jetbrains.annotations.`, '');
+      //content = content.replaceAll(`@${annotation} `, '');
+      //content = content.replaceAll(`@${annotation}\\.\\.\\.`, '...');
     }
     return content;
   }});
@@ -151,6 +153,59 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
         })
       });
 
+      const methods = type.methods.filter((i) => i.modifiers.includes("public")).map((method) => {
+        let fullType = method.type.qualifiedName;
+        if (method.context instanceof MethodDeclarationContext) {
+          fullType = method.context.typeTypeOrVoid().text;
+        } else if (method.context instanceof GenericMethodDeclarationContext) {
+          fullType = method.context.methodDeclaration().typeTypeOrVoid().text;
+        } else {
+          fullType = method.context.interfaceCommonBodyDeclaration()!.typeTypeOrVoid().text;
+        }
+
+        return {
+        name: method.name,
+        parameters: method.parameters.map((param) => {
+          const paramType = param.context.typeType().text;
+          
+          return {
+            name: replaceIllegalParameters(param.name),
+            type: parseGeneric(type, paramType),
+            spread: (param.context instanceof LastFormalParameterContext && !!param.context.ELLIPSIS()),
+            nullable: param.annotations.some((i) => i.qualifiedName === 'Nullable')
+          }}),
+        returnType: parseGeneric(type, fullType),
+        static: method.modifiers.includes("static"),
+      }});
+
+      methods.push({
+        name: 'valueOf',
+        returnType: {
+          name: type.name,
+          nullable: false,
+        },
+        parameters: [{
+          name: "name",
+          type: {
+            name: "String",
+            nullable: false,
+          },
+          spread: false,
+          nullable: false,
+        }],
+        static: true,
+      });
+
+      methods.push({
+        name: 'values',
+        returnType: {
+          name: `java.util.List<${type.name}>`,
+          nullable: false,
+        },
+        parameters: [],
+        static: true,
+      });
+
       definition = {
         name: type.name,
         package: packageName,
@@ -163,34 +218,13 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
               name: replaceIllegalParameters(param.name),
               type: parseGeneric(type, paramType),
               spread: (param.context instanceof LastFormalParameterContext && !!param.context.ELLIPSIS()),
+              nullable: param.annotations.some((i) => i.qualifiedName === 'Nullable')
             }})
           })),
-        methods: type.methods.filter((i) => i.modifiers.includes("public")).map((method) => {
-          let fullType = method.type.qualifiedName;
-          if (method.context instanceof MethodDeclarationContext) {
-            fullType = method.context.typeTypeOrVoid().text;
-          } else if (method.context instanceof GenericMethodDeclarationContext) {
-            fullType = method.context.methodDeclaration().typeTypeOrVoid().text;
-          } else {
-            fullType = method.context.interfaceCommonBodyDeclaration()!.typeTypeOrVoid().text;
-          }
-
-          return {
-          name: method.name,
-          parameters: method.parameters.map((param) => {
-            const paramType = param.context.typeType().text;
-            
-            return {
-              name: replaceIllegalParameters(param.name),
-              type: parseGeneric(type, paramType),
-              spread: (param.context instanceof LastFormalParameterContext && !!param.context.ELLIPSIS()),
-            }}),
-          returnType: parseGeneric(type, fullType),
-          static: method.modifiers.includes("static"),
-        }}),
+        methods,
         type: 'class',
         interfaces: [],
-        superclass: { name: 'java.lang.Enum', generics: [{ name: type.name }] },
+        superclass: { name: 'java.lang.Enum', generics: [{ name: type.name, nullable: false }], nullable: false },
       }
     } else if (type instanceof Interface) {
       let interfaceGenerics: GenericDefinition[] = [];
@@ -205,6 +239,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
           interfaceGenerics.push({
             name: typeParam.identifier().text,
             extends: extendsArr,
+            nullable: false
           });
         }
       }
@@ -225,6 +260,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
               generics.push({
                 name: typeParam.identifier().text,
                 extends: extendsArr,
+                nullable: false,
               });
             }
           }
@@ -241,18 +277,24 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
             name: method.name,
             parameters: method.parameters.map((param) => {
               const paramType = param.context.typeType().text;
-              
               return {
                 name: replaceIllegalParameters(param.name),
                 type: parseGeneric(type, paramType),
                 spread: (param.context instanceof LastFormalParameterContext && !!param.context.ELLIPSIS()),
+                nullable: param.annotations.some((i) => i.qualifiedName === 'Nullable'),
               }}),
             returnType: parseGeneric(type, fullType),
             generics,
             static: method.modifiers.includes("static"),
           }}),
+        fields: type.fields.map((field) => ({ 
+          name: field.name,
+          type: tryType(type, field.type.qualifiedName),
+          readonly: true,
+          static: true,
+        })),
         type: 'interface',
-        interfaces: type.modifiers.includes('sealed') ? [] : type.interfaces.map(i => ({ name: i.canonicalName(), generics: i.arguments.length === 0 ? undefined : i.arguments.map((i) => parseGeneric(type, i.name)) })),
+        interfaces: type.modifiers.includes('sealed') ? [] : type.interfaces.map(i => ({ name: i.canonicalName(), generics: i.arguments.length === 0 ? undefined : i.arguments.map((i) => parseGeneric(type, i.name)), nullable: false })),
         generics: interfaceGenerics,
       }
     } else if (type instanceof Class) {
@@ -268,6 +310,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
           classGenerics.push({
             name: typeParam.identifier().text,
             extends: extendsArr,
+            nullable: false,
           });
         }
       }
@@ -282,6 +325,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
               name: replaceIllegalParameters(param.name),
               type: parseGeneric(type, paramType),
               spread: (param.context instanceof LastFormalParameterContext && !!param.context.ELLIPSIS()),
+              nullable: param.annotations.some((i) => i.qualifiedName === 'Nullable'),
             }})
         })),
         fields: type.fields.filter((i) => i.modifiers.includes("public")).map((field) => ({ 
@@ -302,6 +346,7 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
               generics.push({
                 name: typeParam.identifier().text,
                 extends: extendsArr,
+                nullable: false,
             });
             }
           }
@@ -324,19 +369,21 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
                 name: replaceIllegalParameters(param.name),
                 type: parseGeneric(type, paramType),
                 spread: (param.context instanceof LastFormalParameterContext && !!param.context.ELLIPSIS()),
+                nullable: param.annotations.some((i) => i.qualifiedName === 'Nullable'),
               }}),
             returnType: parseGeneric(type, fullType),
             generics,
             static: method.modifiers.includes("static"),
           }}),
         type: 'class',
-        interfaces: type.interfaces.map(i => ({ name: i.canonicalName(), generics: i.arguments.length === 0 ? undefined : i.arguments.map((i) => parseGeneric(type, i.name)) })),
-        superclass: type.superclass ? { name: type.superclass.canonicalName(), generics: type.superclass.arguments.length === 0 ? undefined : type.superclass.arguments.map((i) => parseGeneric(type, i.name)) } : undefined,
+        interfaces: type.interfaces.map(i => ({ name: i.canonicalName(), generics: i.arguments.length === 0 ? undefined : i.arguments.map((i) => parseGeneric(type, i.name)), nullable: false })),
+        superclass: type.superclass ? { name: type.superclass.canonicalName(), generics: type.superclass.arguments.length === 0 ? undefined : type.superclass.arguments.map((i) => parseGeneric(type, i.name)), nullable: false } : undefined,
         generics: classGenerics,
       }
     }
 
     if (!definition) return;
+
     moduleTypes.push(definition);
   });
 

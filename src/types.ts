@@ -10,6 +10,7 @@ export interface GenericDefinition {
     name: string;
     generics?: GenericDefinition[];
     extends?: GenericDefinition[];
+    nullable: boolean;
 }
 
 export interface MethodDefinition {
@@ -25,6 +26,7 @@ export interface ParameterDefinition {
     name: string;
     type: GenericDefinition;
     spread: boolean;
+    nullable: boolean;
     javadoc?: string;
 }
 
@@ -46,6 +48,7 @@ export interface InterfaceDefinition {
     type: 'interface';
     interfaces: GenericDefinition[];
     generics?: GenericDefinition[];
+    fields: FieldDefinition[];
 }
 
 export type TypeDefinition = {

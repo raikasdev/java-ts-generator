@@ -1,33 +1,45 @@
 import type { TypeDefinition, MethodDefinition, FieldDefinition, ConstructorDefinition, GenericDefinition } from './types';
 
+
 export class TypeScriptEmitter {
     private priority: string[];
     constructor() {
-      this.priority = ['Iterator', 'Date'];
+      this.priority = ['Iterator', 'Date', 'Location'];
     }
 
-    private findInheritedMethods(type: TypeDefinition, packageTypes: TypeDefinition[], existingNames: string[]) {
-      let methods: MethodDefinition[] = [];
+    private findInheritedMethods(type: TypeDefinition, packageTypes: TypeDefinition[], existingNames: string[]): MethodDefinition[];
+    private findInheritedMethods(type: TypeDefinition, packageTypes: TypeDefinition[], existingNames: string[], grouped: false): MethodDefinition[];
+    private findInheritedMethods(type: TypeDefinition, packageTypes: TypeDefinition[], existingNames: string[], grouped: true): Map<string, MethodDefinition[]>;
+    private findInheritedMethods(type: TypeDefinition, packageTypes: TypeDefinition[], existingNames: string[], grouped = false): MethodDefinition[] | Map<string, MethodDefinition[]> {
+      const methodMap: Map<string, MethodDefinition[]> = new Map();
 
       if (type.type === 'class' && type.superclass) {
+        let methods = methodMap.get(type.name) ?? [];
         const superType = packageTypes.find(t => `${t.package}.${t.name}` === type.superclass!.name);
         if (superType && !existingNames.includes(superType.name)) {
           existingNames.push(superType.name);
           methods.push(...superType.methods);
           methods = methods.concat(this.findInheritedMethods(superType, packageTypes, existingNames)); 
         }
+        methodMap.set(type.name, methods);
       }
 
       type.interfaces.forEach(iface => {
+        let methods = methodMap.get(type.name) ?? [];
         const ifaceType = packageTypes.find(t => `${t.package}.${t.name}` === iface.name);
         if (ifaceType && !existingNames.includes(ifaceType.name)) {
           existingNames.push(ifaceType.name);
           methods.push(...ifaceType.methods);
           methods = methods.concat(this.findInheritedMethods(ifaceType, packageTypes, existingNames));
         }
+        methodMap.set(type.name, methods);
       });
 
-      return methods;
+      if (grouped) {
+        return methodMap;
+      } else {
+        return Array.from(methodMap.values()).flat();
+      }
     }
 
     emitPackage(basePackage: string, packageTypes: TypeDefinition[], allTypes: TypeDefinition[]): string {
@@ -39,7 +51,10 @@ export class TypeScriptEmitter {
               continue;
             }
             const found1 = type.methods.find(m => m.name === method.name);
-            const found2 = type.methods.find(m => m.name === method.name && JSON.stringify(m.parameters.map((i) => i.type)) === JSON.stringify(method.parameters.map((i) => i.type)) && JSON.stringify(m.returnType) === JSON.stringify(method.returnType));
+            const found2 = type.methods.find(m => m.name === method.name && JSON.stringify(m.parameters.map((i) => i.type)) === JSON.stringify(method.parameters.map((i) => i.type)) && JSON.stringify(m.generics) === JSON.stringify(method.generics));
+            // TODO: check if return type is compatible, if not it needs to be added
+            // why does this have to be some complicated
+
             // If method has a generic value but doesn't provide it themselves (for example T from the class) ignore that
             function extractGeneric(type: GenericDefinition): string[] {
               const generics = [];
@@ -75,17 +90,17 @@ export class TypeScriptEmitter {
 
         // Generoi jokainen alipakettimoduuli
         const moduleDefinitions = Array.from(subPackages.entries())
-            .map(([packageName, types]) => this.emitModule(packageName, types))
+            .map(([packageName, types]) => this.emitModule(packageName, types, allTypes))
             .join('\n\n');
 
         return moduleDefinitions;
     }
 
-    private emitModule(packageName: string, moduleTypes: TypeDefinition[]): string {
+    private emitModule(packageName: string, moduleTypes: TypeDefinition[], allTypes: TypeDefinition[]): string {
         const { imports, renamed } = this.generateImports(moduleTypes, packageName);
         const typeDefinitions = moduleTypes
             .sort((a, b) => this.priority.indexOf(b.name) - this.priority.indexOf(a.name))
-            .map(type => this.emitType(type, renamed))
+            .map(type => this.emitType(type, renamed, allTypes))
             .join('\n\n');
 
         return `declare module '${packageName}' {
@@ -118,7 +133,7 @@ ${imports}${typeDefinitions}
             className = className.slice(0, inner.index);
           }
 
-          if (existingNames.has(className) && existingNames.get(className) !== packageName) {
+          if ((existingNames.has(className) && existingNames.get(className) !== packageName) || moduleTypes.find((i) => i.package === currentPackage && i.name === className)) {
             renamed.set(qualifiedName, `${packageName.toLowerCase().replaceAll('.', '_')}_${className}`);
             className = `${className} as ${packageName.toLowerCase().replaceAll('.', '_')}_${className}`;
           }
@@ -208,7 +223,7 @@ ${imports}${typeDefinitions}
         return { imports: importDeclarations.length > 0 ? `  ${importDeclarations.join('\n  ')}\n\n` : '', renamed };
     }
 
-    private emitType(type: TypeDefinition, renamed: Map<string, string>): string {
+    private emitType(type: TypeDefinition, renamed: Map<string, string>, allTypes: TypeDefinition[]): string {
         let result = '';
         
         // Lisää javadoc jos on
@@ -257,12 +272,18 @@ ${imports}${typeDefinitions}
           result += this.emitConstructors(type.constructors, renamed);
         }
 
+        // Käydään läpi niitä classeja ja inheritancea...
+        const inheritedMethods = this.findInheritedMethods(type, allTypes, []);
+
         // If both getX and setX exists, add getter and setter functions and set javadocs of original to @deprecated
         // This is CraftJS specific functionality: if you are forking this for something else feel free to remove this section
         for (const getter of type.methods.filter((i) => i.name.startsWith("get") && i.parameters.length === 0 && (type.type !== 'interface' || !i.static))) {
           let valueName = getter.name.slice(3); // And set first letter to lowercase
           valueName = valueName.charAt(0).toLowerCase() + valueName.slice(1);
-          getter.javadoc = `@deprecated Use ${valueName} instead.`;
+          if (type.methods.find((i) => i.name === valueName && !i.static) || inheritedMethods.find((i) => i.name === valueName && !i.static)) {
+            continue;
+          }
+          getter.javadoc = `@deprecated Use get/set`;
           type.methods.push({
             name: `get ${valueName}`,
             parameters: [],
@@ -272,18 +293,22 @@ ${imports}${typeDefinitions}
           });
           const setter = type.methods.find((i) => i.name === `set${getter.name.slice(3)}` && i.parameters.length === 1);
           if (setter) {
-            setter.javadoc = `@deprecated Use ${valueName} instead.`;
+            setter.javadoc = `@deprecated Use get/set`;
 
             type.methods.push({
               name: `set ${valueName}`,
               parameters: setter.parameters,
-              returnType: { name: 'void' },
+              returnType: { name: 'void', nullable: false },
               static: setter.static,
               generics: setter.generics,
             });
           }
         }
 
+        type.methods = type.methods.filter((i) => i.javadoc !== `@deprecated Use get/set`);
+        type.methods = type.methods.filter((i) => !(i.name === 'name' && i.parameters.length === 0)); // Fuck the name(): Component
+
+        type.methods = type.methods.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
         if (type.methods.length > 0) {
             result += this.emitMethods(type.methods, renamed);
         }
@@ -323,7 +348,7 @@ ${imports}${typeDefinitions}
                 result += `    /**\n     * ${method.javadoc}\n     */\n`;
             }
             const params = method.parameters.map(p => 
-                `${p.spread ? '...' : ''}${p.name}: ${this.convertGenericType(p.type, renamed)}${p.spread ? '[]' : ''}`
+                `${p.spread ? '...' : ''}${p.name}: ${this.convertGenericType(p.type, renamed)}${p.spread ? '[]' : ''}${p.nullable ? ' | null' : ''}`
             ).join(', ');
             const generics = (method.generics && method.generics.length > 0) ? 
               `<${method.generics.map(g => this.convertGenericType(g, renamed)).join(', ')}>` : '';
@@ -333,7 +358,7 @@ ${imports}${typeDefinitions}
             }
             result += `${method.name}${generics}(${params})`;
             if (!method.name.startsWith('set ')) {
-              result += `: ${this.convertGenericType(method.returnType, renamed)}`;
+              result += `: ${this.convertGenericType(method.returnType, renamed)}${method.returnType.nullable ? ' | null' : ''}`;
             }
             result += `;`;
             return result;
@@ -377,7 +402,16 @@ ${imports}${typeDefinitions}
           'char': 'string',
           'String': 'string',
           'Object': 'any',
-          '?': 'any'
+          '?': 'any',
+          'java.lang.String': 'string',
+          'java.lang.Integer': 'number',
+          'java.lang.Boolean': 'boolean',
+          'java.lang.Byte': 'number',
+          'java.lang.Short': 'number',
+          'java.lang.Character': 'string',
+          'java.lang.Float': 'number',
+          'java.lang.Double': 'number',
+          'java.lang.Object': 'any',
         };
 
         // Tarkista array-tyypit

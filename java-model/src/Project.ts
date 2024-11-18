@@ -3,6 +3,7 @@ import {
   AnnotationTypeDeclarationContext,
   ClassDeclarationContext,
   CompilationUnitContext,
+  ConstantDeclaratorContext,
   ConstructorDeclarationContext,
   ElementValueContext,
   EnumConstantContext,
@@ -607,13 +608,13 @@ export class Parameter extends Model {
 }
 
 export class Field extends TypeMember {
-  context: FieldDeclarationContext | RecordComponentContext;
+  context: FieldDeclarationContext | RecordComponentContext | ConstantDeclaratorContext;
   type: Type;
   initializer?: Expression;
 
   constructor(
     parent: TypeDeclaration,
-    context: FieldDeclarationContext | RecordComponentContext,
+    context: FieldDeclarationContext | RecordComponentContext | ConstantDeclaratorContext,
     name: string,
     type: Type
   ) {

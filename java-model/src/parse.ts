@@ -17,7 +17,7 @@ import {
   Visitor
 } from "java-ast";
 import { JavaLexer } from "java-ast/dist/parser/JavaLexer";
-import { ConstantDeclaratorContext, IdentifierContext, JavaParser, VariableDeclaratorContext, VariableInitializerContext } from "java-ast/dist/parser/JavaParser";
+import { ConstantDeclaratorContext, ConstDeclarationContext, IdentifierContext, InterfaceMemberDeclarationContext, JavaParser, VariableDeclaratorContext, VariableInitializerContext } from "java-ast/dist/parser/JavaParser";
 import {
   ANTLRInputStream,
   CommonTokenStream,
@@ -432,6 +432,21 @@ function parseFile(source: string): CompilationUnit {
       }
     },
     visitConstantDeclarator(ctx) {
+      if (type instanceof Interface && ctx.parent instanceof ConstDeclarationContext) {
+        const fieldType = parseType(type, ctx.parent.typeType());
+        const name = ctx.identifier().text;
+        const field = new Field(type, ctx, name, fieldType);
+        field.modifiers = [...modifiers];
+        copyAnnotationsTo(annotations, field);
+        if (ctx.variableInitializer()?.expression() != undefined) {
+          field.initializer = parseExpression(
+            ctx.variableInitializer()!.expression()!,
+            type
+          );
+        }
+        type.fields.push(field);
+      }
+
       modifiers = [];
       annotations = [];
     },
