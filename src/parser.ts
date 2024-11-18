@@ -117,10 +117,10 @@ export async function processJavaSource(files: string[]): Promise<TypeDefinition
     let content = await fs.readFile(file, 'utf-8');
     // Remove annotations to easen parsing
     for (const annotation of JETBRAINS_ANNOTATIONS) {
-      //content = content.replaceAll(`\\.@org.jetbrains.annotations.${annotation} `, '');
-      content = content.replaceAll(`org.jetbrains.annotations.`, '');
-      //content = content.replaceAll(`@${annotation} `, '');
-      //content = content.replaceAll(`@${annotation}\\.\\.\\.`, '...');
+      content = content.replaceAll(`\\.@org.jetbrains.annotations.${annotation} `, '');
+      content = content.replaceAll(`@org.jetbrains.annotations.${annotation} `, '');
+      content = content.replaceAll(`@${annotation} `, '');
+      content = content.replaceAll(`@${annotation}\\.\\.\\.`, '...');
     }
     return content;
   }});
