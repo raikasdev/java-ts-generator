@@ -46,3 +46,4 @@ Please also note that java-ts-generator provides only the types. Implementing a 
 - [x] spread parameters (...components)
 - [ ] Records
 - [ ] Nullables and annotations
+- [ ] Javadocs
