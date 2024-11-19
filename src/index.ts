@@ -15,6 +15,7 @@ interface ArtifactSource {
   include?: string[];
   exclude?: string[];
   offset?: string;
+  dependencies?: string[]; // List of type_list.json files
 }
 
 const PAPER_REPOSITORY = 'https://repo.papermc.io/repository/maven-public';
@@ -104,7 +105,7 @@ async function main() {
 
       console.log('Processing Java files...');
       const files = await processDirectory(extractDir, artifactSource, extractDir);
-      const moduleTypes = await processJavaSource(files);
+      const moduleTypes = await processJavaSource(files, artifactSource.dependencies ? (await Promise.all(artifactSource.dependencies.map(async (file) => await Bun.file(file).json()))).flat() : []);
       
       // Lisää tyypit moduuleihin
       for (const type of moduleTypes) {
@@ -131,12 +132,17 @@ async function main() {
       if (!(await fs.exists(OUTPUT_DIR))) await fs.mkdir(OUTPUT_DIR, { recursive: true });
       await fs.writeFile(filename, output);
       files.push(`${basePackage.replace(/\./g, '_')}.d.ts`);
+
       console.log('Generated', filename);
     }
 
+    if (Bun.env.EXPORT_TYPE_LIST === "1") {
+      const types = Array.from(modules.values()).map((i) => Array.from(i)).flat();
+      Bun.write(`${OUTPUT_DIR}/type_list.json`, JSON.stringify(types.map((i) => `${i.package}.${i.name}`)));
+    }
     // Generate index.d.ts with references
     await fs.writeFile(`${OUTPUT_DIR}/index.d.ts`, `// Auto generated index file, do not edit!\n\n${files.map((i) => `/// <reference path="${i}" />`).join('\n')}`);
-    
+
     console.log('Done!');
 
   } catch (error) {

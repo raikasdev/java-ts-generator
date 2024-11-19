@@ -1,6 +1,6 @@
 import {
   AnnotationContext,
-  ConcreteVisitor,
+  type ConcreteVisitor,
   createVisitor,
   CreatorContext,
   ElementValueContext,
@@ -14,7 +14,7 @@ import {
   TypeListContext,
   TypeTypeContext,
   TypeTypeOrVoidContext,
-  Visitor
+  type Visitor
 } from "java-ast";
 import { JavaLexer } from "java-ast/dist/parser/JavaLexer";
 import { ConstantDeclaratorContext, ConstDeclarationContext, IdentifierContext, InterfaceMemberDeclarationContext, JavaParser, VariableDeclaratorContext, VariableInitializerContext } from "java-ast/dist/parser/JavaParser";
@@ -23,13 +23,13 @@ import {
   CommonTokenStream,
   ParserRuleContext
 } from "antlr4ts";
-import { ParseTree } from "antlr4ts/tree/ParseTree";
+import type { ParseTree } from "antlr4ts/tree/ParseTree";
 import { TerminalNode } from "antlr4ts/tree/TerminalNode";
 import { Interval } from "antlr4ts/misc/Interval";
-import { Modifier } from "./common";
+import type { Modifier } from "./common";
 import {
   ConstructorInvocation,
-  Expression,
+  type Expression,
   ExpressionList,
   Literal,
   Name,
@@ -47,7 +47,7 @@ import {
   Enum,
   EnumConstant,
   Field,
-  HasParameters,
+  type HasParameters,
   Interface,
   Method,
   Model,
@@ -55,9 +55,9 @@ import {
   Parameter,
   Project,
   Record,
-  Type,
-  TypeArgument,
-  TypeContainer,
+  type Type,
+  type TypeArgument,
+  type TypeContainer,
   TypeDeclaration,
   TypeParameter,
   Wildcard

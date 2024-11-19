@@ -2,20 +2,21 @@ import { findObject, qualifiedName, splitName } from "./common";
 import {
   CompilationUnit,
   TypeDeclaration,
-  TypeContainer,
+  type TypeContainer,
   Project,
-  ResolvedType,
+  type ResolvedType,
 } from "./Project";
 import { TypeReference } from "./TypeReference";
 
 export function resolve(
   project: Project,
   container: TypeContainer,
-  name: string
+  name: string,
+  dependencyTypes: string[] = []
 ): ResolvedType {
   if (name.includes(".")) {
     const { qualifier, name: simpleName } = splitName(name);
-    const qualifierType = resolve(project, container, qualifier!);
+    const qualifierType = resolve(project, container, qualifier!, dependencyTypes);
     if (qualifierType instanceof TypeDeclaration) {
       const type = findObject(qualifierType.types, simpleName);
       if (type != undefined) {
@@ -70,7 +71,19 @@ export function resolve(
     return new TypeReference(`java.lang.${name}`);
   }
 
-  const starImports = compilationUnit.imports.filter((i) => i.endsWith(".*"));
+  let starImports = compilationUnit.imports.filter((i) => i.endsWith(".*"));
+  const dependencyStarImports = starImports.filter((i) => dependencyTypes.some((dependency) => dependency.startsWith(i.slice(0, -2))))
+  
+  if (dependencyStarImports.length > 0) {
+    for (const starImport of dependencyStarImports) {
+      if (dependencyTypes.includes(`${starImport.slice(0, -2)}.${name}`)) {
+        return new TypeReference(`${starImport}.${name}`);
+      } else {
+        starImports = starImports.filter((i) => i !== starImport);
+      }
+    }
+  }
+
   if (starImports.length === 0) {
     return new TypeReference(qualifiedName(packageName, name));
   } else if (starImports.length === 1) {

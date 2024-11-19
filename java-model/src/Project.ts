@@ -22,8 +22,8 @@ import {
 } from "java-ast";
 import { ParserRuleContext } from "antlr4ts";
 import { Property } from "./Property";
-import { findObject, Modifier, qualifiedName, simpleName } from "./common";
-import { Expression } from "./Expression";
+import { findObject, type Modifier, qualifiedName, simpleName } from "./common";
+import type { Expression } from "./Expression";
 import { PrimitiveType } from "./PrimitiveType";
 import { resolve } from "./resolve";
 import { TypeReference } from "./TypeReference";
@@ -62,8 +62,8 @@ export class Project {
     return this.types[qualifiedName];
   }
 
-  resolve(container: TypeContainer, name: string): ResolvedType {
-    return resolve(this, container, name);
+  resolve(container: TypeContainer, name: string, dependencyTypes: string[] = []): ResolvedType {
+    return resolve(this, container, name, dependencyTypes);
   }
 
   toJSON() {
@@ -567,6 +567,7 @@ export class Method extends TypeMember implements HasParameters {
   context: MethodDeclarationContext | InterfaceMethodDeclarationContext | GenericMethodDeclarationContext | GenericInterfaceMethodDeclarationContext;
   type: Type;
   parameters: Parameter[];
+  javadoc?: string;
 
   constructor(
     parent: TypeDeclaration,
